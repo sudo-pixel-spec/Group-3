@@ -146,6 +146,7 @@ const uploadFrame = async (req, res) => {
       ai: aiResult,
       risk_score: updatedAttempt.risk_score,
       has_frame: Boolean(updatedAttempt.last_frame),
+      saved_frame_length: updatedAttempt.last_frame ? updatedAttempt.last_frame.length : 0,
     });
   } catch (error) {
     res.status(500).json({ message: error.message });

@@ -33,11 +33,29 @@ const ExamPage = () => {
     if (!localStorage.getItem('token')) { navigate('/login'); return; }
     examAPI.getExam(id).then(res => {
       const data = res.data;
-      setExam(data.exam || data);
-      setTimeLeft((data.exam || data).duration_minutes * 60);
+      const loadedExam = data.exam || data;
+      setExam(loadedExam);
+      setTimeLeft(loadedExam.duration_minutes * 60);
       if (data.attempt) {
         setAttempt(data.attempt);
         setRiskScore(data.attempt.risk_score || 0);
+        return;
+      }
+
+      // Fallback: ensure attempt exists for snapshot/event logging.
+      if (loadedExam?.code) {
+        examAPI.joinExam(loadedExam.code)
+          .then((joinRes) => {
+            if (joinRes?.data?.attempt) {
+              setAttempt(joinRes.data.attempt);
+              setRiskScore(joinRes.data.attempt.risk_score || 0);
+            } else {
+              setSnapshotStatus('No active attempt found');
+            }
+          })
+          .catch(() => setSnapshotStatus('No active attempt found'));
+      } else {
+        setSnapshotStatus('No active attempt found');
       }
     }).catch(() => navigate('/dashboard'));
   }, [id, navigate]);
@@ -279,7 +297,13 @@ const ExamPage = () => {
 
   // --- 1 FPS frame upload pipeline ---
   useEffect(() => {
-    if (!attemptRef.current?._id) return;
+    if (!attempt?._id) {
+      setSnapshotStatus('No active attempt found');
+      return;
+    }
+
+    const attemptId = attempt._id;
+    setSnapshotStatus('Starting snapshot upload…');
 
     frameIntervalRef.current = setInterval(() => {
       if (!videoRef.current || !canvasRef.current || videoRef.current.readyState < 2) return;
@@ -290,8 +314,16 @@ const ExamPage = () => {
       ctx.drawImage(videoRef.current, 0, 0, 160, 120);
       const frame = canvas.toDataURL('image/jpeg', 0.5);
 
-      monitoringAPI.uploadFrame({ attempt_id: attemptRef.current._id, frame })
-        .then(() => setSnapshotStatus(`Last upload: ${new Date().toLocaleTimeString()}`))
+      monitoringAPI.uploadFrame({ attempt_id: attemptId, frame })
+        .then((res) => {
+          const hasFrame = Boolean(res?.data?.has_frame);
+          const savedLen = Number(res?.data?.saved_frame_length || 0);
+          setSnapshotStatus(
+            hasFrame && savedLen > 0
+              ? `Last upload: ${new Date().toLocaleTimeString()} (${savedLen} bytes)`
+              : 'Uploaded, but backend did not persist frame'
+          );
+        })
         .catch((err) => {
           const code = err?.response?.status;
           setSnapshotStatus(`Upload failed${code ? ` (${code})` : ''}`);
