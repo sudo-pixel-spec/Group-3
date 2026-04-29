@@ -8,6 +8,7 @@ const ExamPage = () => {
   const videoRef = useRef(null);
   const canvasRef = useRef(null);
   const cameraRef = useRef(null);
+  const videoStreamRef = useRef(null);
   const audioCtxRef = useRef(null);
   const analyserRef = useRef(null);
   const audioIntervalRef = useRef(null);
@@ -212,6 +213,36 @@ const ExamPage = () => {
     return () => { cancelled = true; if (cameraRef.current) cameraRef.current.stop(); };
   }, [logEvent]);
 
+  // --- Ensure webcam stream exists even if MediaPipe fails ---
+  useEffect(() => {
+    let cancelled = false;
+
+    const initCameraStream = async () => {
+      try {
+        const stream = await navigator.mediaDevices.getUserMedia({ video: true, audio: false });
+        if (cancelled) {
+          stream.getTracks().forEach((t) => t.stop());
+          return;
+        }
+        videoStreamRef.current = stream;
+        if (videoRef.current && !videoRef.current.srcObject) {
+          videoRef.current.srcObject = stream;
+        }
+      } catch (_) {
+        setCamError('Camera permission denied. Snapshots cannot be captured.');
+      }
+    };
+
+    initCameraStream();
+    return () => {
+      cancelled = true;
+      if (videoStreamRef.current) {
+        videoStreamRef.current.getTracks().forEach((t) => t.stop());
+        videoStreamRef.current = null;
+      }
+    };
+  }, []);
+
   // --- Audio monitoring (Web Audio API) ---
   useEffect(() => {
     let stream;
@@ -250,7 +281,7 @@ const ExamPage = () => {
     if (!attemptRef.current?._id) return;
 
     frameIntervalRef.current = setInterval(() => {
-      if (!videoRef.current || !canvasRef.current) return;
+      if (!videoRef.current || !canvasRef.current || videoRef.current.readyState < 2) return;
       const canvas = canvasRef.current;
       const ctx = canvas.getContext('2d');
       canvas.width = 160;
@@ -352,6 +383,7 @@ const ExamPage = () => {
             <p style={{ fontSize: '0.7rem', color: 'var(--text-secondary)', marginBottom: '0.4rem', textTransform: 'uppercase', letterSpacing: '0.05em' }}>📷 Camera</p>
             <video ref={videoRef} autoPlay muted playsInline
               style={{ width: '100%', borderRadius: '10px', background: '#000', aspectRatio: '4/3', objectFit: 'cover' }} />
+            {camError && <p style={{ marginTop: '0.45rem', fontSize: '0.75rem', color: 'var(--danger)' }}>{camError}</p>}
           </div>
 
           {/* AI Status */}
