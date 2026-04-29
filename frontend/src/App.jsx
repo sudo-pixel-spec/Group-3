@@ -5,6 +5,7 @@ import Register from './pages/Register';
 import Dashboard from './pages/Dashboard';
 import ExamPage from './pages/ExamPage';
 import AdminDashboard from './pages/AdminDashboard';
+import AdminStudentDetail from './pages/AdminStudentDetail';
 import './index.css';
 
 // Simple route guards
@@ -33,6 +34,7 @@ function App() {
 
         {/* Admin */}
         <Route path="/admin/dashboard" element={<AdminRoute><AdminDashboard /></AdminRoute>} />
+        <Route path="/admin/student/:attemptId" element={<AdminRoute><AdminStudentDetail /></AdminRoute>} />
 
         {/* Fallback */}
         <Route path="*" element={<Navigate to="/login" replace />} />

@@ -25,8 +25,10 @@ export const examAPI = {
 
 export const monitoringAPI = {
   logEvent: (data) => API.post('/monitoring/log-event', data),
+  uploadFrame: (data) => API.post('/monitoring/upload-frame', data),
   getLive: () => API.get('/monitoring/live'),
   getAttemptEvents: (id) => API.get(`/monitoring/attempt/${id}/events`),
+  getAttemptDetail: (id) => API.get(`/monitoring/attempt/${id}/detail`),
 };
 
 export default API;

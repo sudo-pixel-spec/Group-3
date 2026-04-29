@@ -123,13 +123,19 @@ const AdminDashboard = () => {
               </div>
             : <div className="grid-2">
                 {liveAttempts.map(attempt => (
-                  <div key={attempt._id} className="card" style={{ cursor: 'default' }}>
+                  <div key={attempt._id} className="card" style={{ cursor: 'pointer', transition: 'var(--transition)' }}
+                    onClick={() => navigate(`/admin/student/${attempt._id}`)}>
                     <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '0.75rem' }}>
                       {getRiskBadge(attempt.risk_score)}
                       <span style={{ color: 'var(--text-secondary)', fontSize: '0.78rem' }}>
                         {new Date(attempt.start_time).toLocaleTimeString()}
                       </span>
                     </div>
+                    {/* Live frame thumbnail */}
+                    {attempt.last_frame && (
+                      <img src={attempt.last_frame} alt="Live snapshot"
+                        style={{ width: '100%', height: '100px', objectFit: 'cover', borderRadius: '6px', marginBottom: '0.75rem', background: '#000' }} />
+                    )}
                     <p style={{ fontWeight: '600', marginBottom: '0.25rem' }}>{attempt.user_id?.email || 'Unknown'}</p>
                     <p style={{ color: 'var(--text-secondary)', fontSize: '0.85rem', marginBottom: '0.75rem' }}>
                       {attempt.exam_id?.title || 'Exam'} · <span style={{ fontFamily: 'monospace' }}>{attempt.exam_id?.code}</span>
@@ -141,6 +147,10 @@ const AdminDashboard = () => {
                           {attempt.risk_score}
                         </p>
                       </div>
+                      <button className="btn btn-ghost" style={{ padding: '0.35rem 0.75rem', fontSize: '0.75rem' }}
+                        onClick={(e) => { e.stopPropagation(); navigate(`/admin/student/${attempt._id}`); }}>
+                        View Details →
+                      </button>
                     </div>
                   </div>
                 ))}

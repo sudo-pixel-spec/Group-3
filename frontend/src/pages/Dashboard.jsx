@@ -14,7 +14,7 @@ const Dashboard = () => {
     if (!localStorage.getItem('token')) { navigate('/login'); return; }
     examAPI.getDashboard()
       .then(res => setData(res.data))
-      .catch(() => {})
+      .catch(() => { })
       .finally(() => setLoading(false));
   }, [navigate]);
 
@@ -96,17 +96,17 @@ const Dashboard = () => {
               {data.upcoming?.length === 0
                 ? <p style={{ color: 'var(--text-secondary)' }}>No upcoming exams scheduled.</p>
                 : <div className="grid-2">
-                    {data.upcoming.map(exam => (
-                      <div key={exam._id} className="card">
-                        <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '0.75rem' }}>
-                          <span className="badge badge-warning">UPCOMING</span>
-                          <span style={{ color: 'var(--text-secondary)', fontSize: '0.8rem' }}>{exam.code}</span>
-                        </div>
-                        <h3 style={{ marginBottom: '0.5rem' }}>{exam.title}</h3>
-                        <p style={{ color: 'var(--text-secondary)', fontSize: '0.85rem' }}>Starts: {formatDate(exam.start_time)}</p>
+                  {data.upcoming.map(exam => (
+                    <div key={exam._id} className="card">
+                      <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '0.75rem' }}>
+                        <span className="badge badge-warning">UPCOMING</span>
+                        <span style={{ color: 'var(--text-secondary)', fontSize: '0.8rem' }}>{exam.code}</span>
                       </div>
-                    ))}
-                  </div>
+                      <h3 style={{ marginBottom: '0.5rem' }}>{exam.title}</h3>
+                      <p style={{ color: 'var(--text-secondary)', fontSize: '0.85rem' }}>Starts: {formatDate(exam.start_time)}</p>
+                    </div>
+                  ))}
+                </div>
               }
             </div>
 
@@ -116,24 +116,24 @@ const Dashboard = () => {
               {data.completed?.length === 0
                 ? <p style={{ color: 'var(--text-secondary)' }}>No completed exams yet.</p>
                 : <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
-                    {data.completed.map(attempt => (
-                      <div key={attempt._id} className="card" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '1rem 1.5rem' }}>
-                        <div>
-                          <p style={{ fontWeight: '600' }}>{attempt.exam_id?.title || 'Exam'}</p>
-                          <p style={{ color: 'var(--text-secondary)', fontSize: '0.8rem' }}>{formatDate(attempt.updatedAt)}</p>
-                        </div>
-                        <div style={{ textAlign: 'right' }}>
-                          {attempt.score !== null
-                            ? <p style={{ fontWeight: '700', fontSize: '1.1rem', color: 'var(--success)' }}>{attempt.score}/100</p>
-                            : <span className="badge badge-warning">Pending</span>
-                          }
-                          <p style={{ fontSize: '0.75rem', color: 'var(--text-secondary)', marginTop: '0.25rem' }}>
-                            Risk: <span style={{ color: attempt.risk_score > 60 ? 'var(--danger)' : 'var(--text-primary)' }}>{attempt.risk_score}</span>
-                          </p>
-                        </div>
+                  {data.completed.map(attempt => (
+                    <div key={attempt._id} className="card" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '1rem 1.5rem' }}>
+                      <div>
+                        <p style={{ fontWeight: '600' }}>{attempt.exam_id?.title || 'Exam'}</p>
+                        <p style={{ color: 'var(--text-secondary)', fontSize: '0.8rem' }}>{formatDate(attempt.updatedAt)}</p>
                       </div>
-                    ))}
-                  </div>
+                      <div style={{ textAlign: 'right' }}>
+                        {attempt.score !== null
+                          ? <p style={{ fontWeight: '700', fontSize: '1.1rem', color: 'var(--success)' }}>{attempt.score}/100</p>
+                          : <span className="badge badge-warning">Pending</span>
+                        }
+                        <p style={{ fontSize: '0.75rem', color: 'var(--text-secondary)', marginTop: '0.25rem' }}>
+                          Risk: <span style={{ color: attempt.risk_score > 60 ? 'var(--danger)' : 'var(--text-primary)' }}>{attempt.risk_score}</span>
+                        </p>
+                      </div>
+                    </div>
+                  ))}
+                </div>
               }
             </div>
           </>

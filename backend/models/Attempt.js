@@ -24,6 +24,10 @@ const attemptSchema = new mongoose.Schema({
     type: Number,
     default: 0,
   },
+  last_frame: {
+    type: String, // base64 encoded JPEG snapshot
+    default: null,
+  },
   start_time: {
     type: Date,
     default: Date.now,
