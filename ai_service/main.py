@@ -8,6 +8,7 @@ import mediapipe as mp
 from mediapipe.tasks import python
 from mediapipe.tasks.python import vision
 import base64
+from ultralytics import YOLO
 
 app = FastAPI(title="Proctoring AI Service", version="2.0.0")
 
@@ -23,13 +24,24 @@ app.add_middleware(
 base_options = python.BaseOptions(model_asset_path='blaze_face_short_range.tflite')
 options = vision.FaceDetectorOptions(base_options=base_options, min_detection_confidence=0.5)
 face_detector = vision.FaceDetector.create_from_options(options)
+yolo_model = None
+
+try:
+    # COCO class 67 => "cell phone"
+    yolo_model = YOLO("yolov8n.pt")
+except Exception:
+    yolo_model = None
 
 class FrameRequest(BaseModel):
     frame: str  # base64 data URL
 
 @app.get("/health")
 def health_check():
-    return {"status": "ok", "message": "AI Service running with MediaPipe"}
+    return {
+        "status": "ok",
+        "message": "AI Service running with MediaPipe + YOLO",
+        "yolo_loaded": bool(yolo_model),
+    }
 
 @app.post("/analyze-frame")
 async def analyze_frame(req: FrameRequest):
@@ -84,6 +96,30 @@ async def analyze_frame(req: FrameRequest):
             if abs(face_cx - 0.5) > 0.35 or abs(face_cy - 0.5) > 0.35:
                 looking_away = True
         
+        phone_detected = False
+        phone_confidence = 0.0
+        phone_detections = []
+
+        if yolo_model is not None:
+            try:
+                yolo_results = yolo_model.predict(
+                    source=img,
+                    conf=0.35,
+                    classes=[67],  # cell phone
+                    verbose=False,
+                    imgsz=640,
+                )
+                if yolo_results and len(yolo_results) > 0 and yolo_results[0].boxes is not None:
+                    boxes = yolo_results[0].boxes
+                    if len(boxes) > 0:
+                        phone_detected = True
+                        confs = boxes.conf.detach().cpu().numpy().tolist()
+                        phone_confidence = float(max(confs)) if confs else 0.0
+                        phone_detections = [float(c) for c in confs]
+            except Exception:
+                # Keep service resilient if YOLO inference fails.
+                pass
+
         return {
             "status": "success",
             "data": {
@@ -91,6 +127,9 @@ async def analyze_frame(req: FrameRequest):
                 "face_count": face_count,
                 "multiple_faces": face_count > 1,
                 "looking_away": looking_away,
+                "phone_detected": phone_detected,
+                "phone_confidence": phone_confidence,
+                "phone_detection_count": len(phone_detections),
             }
         }
     except Exception as e:
@@ -102,6 +141,9 @@ async def analyze_frame(req: FrameRequest):
                 "face_count": 1,
                 "multiple_faces": False,
                 "looking_away": False,
+                "phone_detected": False,
+                "phone_confidence": 0.0,
+                "phone_detection_count": 0,
             }
         }
 

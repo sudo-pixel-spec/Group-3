@@ -34,6 +34,7 @@ const AdminStudentDetail = () => {
     AUDIO_DETECTED: '🎤',
     TAB_SWITCH: '🔀',
     BLURRED_WINDOW: '🌐',
+    PHONE_DETECTED: '📱',
   };
 
   if (loading) return <div className="page-center"><div className="spinner" /></div>;

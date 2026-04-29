@@ -12,6 +12,7 @@ const RISK_WEIGHTS = {
   BLURRED_WINDOW: 15,
   MOUSE_OFF_SCREEN: 10,
   KEYBOARD_SHORTCUT: 15,
+  PHONE_DETECTED: 35,
 };
 
 // @desc  Log a proctoring event
@@ -96,9 +97,11 @@ const uploadFrame = async (req, res) => {
       return res.status(403).json({ message: 'Not authorized' });
     }
 
-    // Store latest frame for Admin live view
-    attempt.last_frame = frame;
-    await attempt.save();
+    // Store latest frame for Admin live view atomically to avoid overwrite races
+    await Attempt.updateOne(
+      { _id: attempt_id },
+      { $set: { last_frame: frame, updatedAt: new Date() } }
+    );
 
     // Forward to Python AI service for face analysis
     let aiResult = { face_detected: true, face_count: 1, looking_away: false };
@@ -119,15 +122,31 @@ const uploadFrame = async (req, res) => {
     if (!aiResult.face_detected) autoEvents.push('NO_FACE');
     if (aiResult.face_count > 1) autoEvents.push('MULTIPLE_FACES');
     if (aiResult.looking_away) autoEvents.push('LOOKING_AWAY');
+    if (aiResult.phone_detected) autoEvents.push('PHONE_DETECTED');
 
+    let riskIncrementTotal = 0;
     for (const event_type of autoEvents) {
-      await Event.create({ user_id: req.user._id, attempt_id, event_type, confidence: 0.9 });
-      const riskIncrement = RISK_WEIGHTS[event_type] || 0;
-      attempt.risk_score = Math.min(100, attempt.risk_score + riskIncrement);
+      const confidence = event_type === 'PHONE_DETECTED'
+        ? (aiResult.phone_confidence || 0.9)
+        : 0.9;
+      await Event.create({ user_id: req.user._id, attempt_id, event_type, confidence });
+      riskIncrementTotal += RISK_WEIGHTS[event_type] || 0;
     }
-    if (autoEvents.length > 0) await attempt.save();
 
-    res.json({ status: 'ok', ai: aiResult, risk_score: attempt.risk_score });
+    const updatedAttempt = await Attempt.findById(attempt_id).select('risk_score last_frame');
+    if (!updatedAttempt) return res.status(404).json({ message: 'Attempt not found after update' });
+
+    if (riskIncrementTotal > 0) {
+      updatedAttempt.risk_score = Math.min(100, updatedAttempt.risk_score + riskIncrementTotal);
+      await updatedAttempt.save();
+    }
+
+    res.json({
+      status: 'ok',
+      ai: aiResult,
+      risk_score: updatedAttempt.risk_score,
+      has_frame: Boolean(updatedAttempt.last_frame),
+    });
   } catch (error) {
     res.status(500).json({ message: error.message });
   }

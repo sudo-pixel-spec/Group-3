@@ -4,3 +4,4 @@ opencv-python==4.8.0.76
 mediapipe==0.10.30
 numpy==1.25.2
 python-multipart==0.0.6
+ultralytics==8.3.75

@@ -21,6 +21,7 @@ const ExamPage = () => {
   const [camError, setCamError] = useState('');
   const [isFullscreen, setIsFullscreen] = useState(false);
   const [aiStatus, setAiStatus] = useState('Initializing…');
+  const [snapshotStatus, setSnapshotStatus] = useState('Waiting for first upload…');
 
   const attemptRef = useRef(null);
   const timerRef = useRef(null);
@@ -289,7 +290,12 @@ const ExamPage = () => {
       ctx.drawImage(videoRef.current, 0, 0, 160, 120);
       const frame = canvas.toDataURL('image/jpeg', 0.5);
 
-      monitoringAPI.uploadFrame({ attempt_id: attemptRef.current._id, frame }).catch(() => {});
+      monitoringAPI.uploadFrame({ attempt_id: attemptRef.current._id, frame })
+        .then(() => setSnapshotStatus(`Last upload: ${new Date().toLocaleTimeString()}`))
+        .catch((err) => {
+          const code = err?.response?.status;
+          setSnapshotStatus(`Upload failed${code ? ` (${code})` : ''}`);
+        });
     }, 1000);
 
     return () => { if (frameIntervalRef.current) clearInterval(frameIntervalRef.current); };
@@ -405,6 +411,9 @@ const ExamPage = () => {
               <span style={{ width: '8px', height: '8px', borderRadius: '50%', background: 'var(--success)', display: 'inline-block', animation: 'spin 2s linear infinite' }} />
               <span style={{ fontSize: '0.8rem', fontWeight: '600', color: 'var(--text-primary)' }}>🎥 Video · 🎤 Audio · 🌐 Browser</span>
             </div>
+            <p style={{ marginTop: '0.45rem', fontSize: '0.72rem', color: snapshotStatus.startsWith('Upload failed') ? 'var(--danger)' : 'var(--text-secondary)' }}>
+              📸 {snapshotStatus}
+            </p>
           </div>
 
           {/* Recent Events */}
