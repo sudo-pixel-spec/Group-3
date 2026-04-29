@@ -59,6 +59,7 @@ A full-stack, AI-driven online exam proctoring platform that monitors students i
 | Multiple faces | MediaPipe (Browser) | `MULTIPLE_FACES` |
 | Looking away | Bounding box analysis | `LOOKING_AWAY` |
 | Talking / voices | Web Audio API | `AUDIO_DETECTED` |
+| Phone detected | YOLOv8 object detection | `PHONE_DETECTED` |
 | Tab switch | Visibility API | `TAB_SWITCH` |
 | Window blur | Blur event | `BLURRED_WINDOW` |
 
@@ -68,6 +69,7 @@ risk = 30 × (multiple_faces)
      + 20 × (no_face)
      + 20 × (looking_away)
      + 15 × (audio_detected)
+     + 35 × (phone_detected)
      + 15 × (tab_switch)
 ```
 Score accumulates in real-time, capped at 100.

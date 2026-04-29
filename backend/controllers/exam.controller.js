@@ -133,6 +133,13 @@ const submitExam = async (req, res) => {
     } catch (mailError) {
       // Do not block successful submission if email delivery fails.
       console.error('Failed to send exam report email:', extractMailerError(mailError));
+      console.error('MailerSend debug payload:', {
+        name: mailError?.name,
+        code: mailError?.code,
+        statusCode: mailError?.statusCode,
+        status: mailError?.response?.status,
+        response: mailError?.response?.data || mailError?.body || null,
+      });
     }
 
     res.json(attempt);

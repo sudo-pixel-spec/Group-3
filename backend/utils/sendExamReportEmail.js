@@ -2,8 +2,11 @@ const { MailerSend, EmailParams, Sender, Recipient } = require('mailersend');
 
 const formatDate = (value) => (value ? new Date(value).toLocaleString() : 'N/A');
 const safeStringify = (value) => {
+  if (value === undefined) return 'undefined';
+  if (value === null) return 'null';
   try {
-    return JSON.stringify(value);
+    const parsed = JSON.stringify(value);
+    return parsed === undefined ? String(value) : parsed;
   } catch (error) {
     return String(value);
   }
@@ -16,6 +19,22 @@ const extractMailerError = (error) => {
 
   const responseData = error.response?.data || error.body;
   if (responseData) return safeStringify(responseData);
+
+  if (error.response) {
+    return safeStringify({
+      status: error.response.status,
+      statusText: error.response.statusText,
+      data: error.response.data,
+    });
+  }
+
+  if (error.statusCode || error.code) {
+    return safeStringify({
+      statusCode: error.statusCode,
+      code: error.code,
+      name: error.name,
+    });
+  }
 
   return safeStringify(error);
 };
@@ -67,11 +86,7 @@ const sendExamReportEmail = async ({ toEmail, examTitle, examCode, score, riskSc
     .setHtml(html);
 
   const mailerSend = new MailerSend({ apiKey });
-  try {
-    await mailerSend.email.send(emailParams);
-  } catch (error) {
-    throw new Error(extractMailerError(error));
-  }
+  await mailerSend.email.send(emailParams);
 
   return { skipped: false };
 };
