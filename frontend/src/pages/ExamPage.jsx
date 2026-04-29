@@ -94,18 +94,33 @@ const ExamPage = () => {
     if (!videoRef.current) return;
     let cancelled = false;
 
-    // Dynamically load MediaPipe scripts
-    const loadScript = (src) => new Promise((resolve, reject) => {
-      if (document.querySelector(`script[src="${src}"]`)) { resolve(); return; }
-      const s = document.createElement('script');
-      s.src = src; s.onload = resolve; s.onerror = reject;
+    // Fixed loadScript: Handles StrictMode double-execution where script is in DOM but not yet loaded.
+    const loadScript = (src, globalVarName) => new Promise((resolve, reject) => {
+      // If already fully loaded and available on window
+      if (window[globalVarName]) { resolve(); return; }
+      
+      let s = document.querySelector(`script[src="${src}"]`);
+      if (s) {
+        if (s.getAttribute('data-loaded') === 'true') { resolve(); return; }
+        s.addEventListener('load', () => resolve());
+        s.addEventListener('error', reject);
+        return;
+      }
+      
+      s = document.createElement('script');
+      s.src = src; 
+      s.onload = () => { 
+        s.setAttribute('data-loaded', 'true'); 
+        resolve(); 
+      };
+      s.onerror = reject;
       document.head.appendChild(s);
     });
 
     const initMediaPipe = async () => {
       try {
-        await loadScript('https://cdn.jsdelivr.net/npm/@mediapipe/face_detection/face_detection.js');
-        await loadScript('https://cdn.jsdelivr.net/npm/@mediapipe/camera_utils/camera_utils.js');
+        await loadScript('https://cdn.jsdelivr.net/npm/@mediapipe/face_detection/face_detection.js', 'FaceDetection');
+        await loadScript('https://cdn.jsdelivr.net/npm/@mediapipe/camera_utils/camera_utils.js', 'Camera');
         if (cancelled) return;
 
         const FaceDetection = window.FaceDetection;
@@ -150,14 +165,20 @@ const ExamPage = () => {
         });
 
         const camera = new Camera(videoRef.current, {
-          onFrame: async () => { await faceDetection.send({ image: videoRef.current }); },
+          onFrame: async () => {
+            if (!cancelled) await faceDetection.send({ image: videoRef.current });
+          },
           width: 320, height: 240,
         });
+        
+        await faceDetection.initialize();
+        if (cancelled) return;
+
         camera.start();
         cameraRef.current = camera;
         setAiStatus('✅ AI monitoring active');
       } catch (err) {
-        console.warn('MediaPipe load failed, falling back to frame-only mode:', err);
+        console.warn('MediaPipe load failed:', err);
         setAiStatus('⚠ AI offline — frame capture only');
       }
     };
