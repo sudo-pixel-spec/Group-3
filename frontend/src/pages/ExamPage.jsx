@@ -30,8 +30,13 @@ const ExamPage = () => {
   useEffect(() => {
     if (!localStorage.getItem('token')) { navigate('/login'); return; }
     examAPI.getExam(id).then(res => {
-      setExam(res.data);
-      setTimeLeft(res.data.duration_minutes * 60);
+      const data = res.data;
+      setExam(data.exam || data);
+      setTimeLeft((data.exam || data).duration_minutes * 60);
+      if (data.attempt) {
+        setAttempt(data.attempt);
+        setRiskScore(data.attempt.risk_score || 0);
+      }
     }).catch(() => navigate('/dashboard'));
   }, [id, navigate]);
 
@@ -77,15 +82,35 @@ const ExamPage = () => {
     return () => document.removeEventListener('fullscreenchange', onFullscreenChange);
   }, [logEvent, enterFullscreen]);
 
-  // --- Browser monitoring (tab switch / blur) ---
+  // --- Browser monitoring (tab switch / blur / mouse / keyboard) ---
   useEffect(() => {
     const handleVisibilityChange = () => { if (document.hidden) logEvent('TAB_SWITCH'); };
     const handleBlur = () => logEvent('BLURRED_WINDOW');
+    
+    // Check if mouse leaves the browser window
+    const handleMouseLeave = (e) => {
+      if (e.clientY <= 0 || e.clientX <= 0 || (e.clientX >= window.innerWidth || e.clientY >= window.innerHeight)) {
+        logEvent('MOUSE_OFF_SCREEN');
+      }
+    };
+    
+    // Check for risky keyboard shortcuts (Copy, Paste, Print)
+    const handleKeyDown = (e) => {
+      if ((e.ctrlKey || e.metaKey) && (e.key === 'c' || e.key === 'v' || e.key === 'p')) {
+        logEvent('KEYBOARD_SHORTCUT');
+      }
+    };
+
     document.addEventListener('visibilitychange', handleVisibilityChange);
     window.addEventListener('blur', handleBlur);
+    document.addEventListener('mouseleave', handleMouseLeave);
+    document.addEventListener('keydown', handleKeyDown);
+
     return () => {
       document.removeEventListener('visibilitychange', handleVisibilityChange);
       window.removeEventListener('blur', handleBlur);
+      document.removeEventListener('mouseleave', handleMouseLeave);
+      document.removeEventListener('keydown', handleKeyDown);
     };
   }, [logEvent]);
 
@@ -247,13 +272,18 @@ const ExamPage = () => {
   // --- Keep attemptRef in sync ---
   useEffect(() => { attemptRef.current = attempt; }, [attempt]);
 
-  const handleSubmit = () => {
+  const handleSubmit = async () => {
     clearTimeout(timerRef.current);
     if (frameIntervalRef.current) clearInterval(frameIntervalRef.current);
     if (audioIntervalRef.current) clearInterval(audioIntervalRef.current);
     if (cameraRef.current) cameraRef.current.stop();
     if (audioCtxRef.current) audioCtxRef.current.close();
     if (document.fullscreenElement) document.exitFullscreen().catch(() => {});
+    
+    try {
+      if (exam) await examAPI.submitExam(exam._id || exam.id);
+    } catch (_) {}
+    
     navigate('/dashboard');
   };
 

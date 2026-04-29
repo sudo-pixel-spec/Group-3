@@ -10,6 +10,8 @@ const RISK_WEIGHTS = {
   AUDIO_DETECTED: 15,
   TAB_SWITCH: 15,
   BLURRED_WINDOW: 15,
+  MOUSE_OFF_SCREEN: 10,
+  KEYBOARD_SHORTCUT: 15,
 };
 
 // @desc  Log a proctoring event
@@ -65,7 +67,11 @@ const getAttemptEvents = async (req, res) => {
 // @access Private (admin)
 const getLiveAttempts = async (req, res) => {
   try {
-    const attempts = await Attempt.find({ status: 'in_progress' })
+    const thirtySecondsAgo = new Date(Date.now() - 30000);
+    const attempts = await Attempt.find({ 
+      status: 'in_progress',
+      updatedAt: { $gte: thirtySecondsAgo }
+    })
       .populate('user_id', 'email')
       .populate('exam_id', 'title code');
     res.json(attempts);

@@ -5,6 +5,8 @@ import uvicorn
 import cv2
 import numpy as np
 import mediapipe as mp
+from mediapipe.tasks import python
+from mediapipe.tasks.python import vision
 import base64
 
 app = FastAPI(title="Proctoring AI Service", version="2.0.0")
@@ -17,12 +19,10 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-# Initialize MediaPipe Face Detection
-mp_face_detection = mp.solutions.face_detection
-face_detector = mp_face_detection.FaceDetection(
-    model_selection=1,  # 0 = short range, 1 = full range
-    min_detection_confidence=0.5
-)
+# Initialize MediaPipe Face Detection (Tasks API)
+base_options = python.BaseOptions(model_asset_path='blaze_face_short_range.tflite')
+options = vision.FaceDetectorOptions(base_options=base_options, min_detection_confidence=0.5)
+face_detector = vision.FaceDetector.create_from_options(options)
 
 class FrameRequest(BaseModel):
     frame: str  # base64 data URL
@@ -52,9 +52,12 @@ async def analyze_frame(req: FrameRequest):
         
         h, w, _ = img.shape
         
-        # Convert to RGB for MediaPipe
+        # Convert to RGB and then to MediaPipe Image
         img_rgb = cv2.cvtColor(img, cv2.COLOR_BGR2RGB)
-        results = face_detector.process(img_rgb)
+        mp_image = mp.Image(image_format=mp.ImageFormat.SRGB, data=img_rgb)
+        
+        # Run detection
+        results = face_detector.detect(mp_image)
         
         face_count = 0
         face_detected = False
@@ -65,13 +68,16 @@ async def analyze_frame(req: FrameRequest):
             face_detected = True
             
             # Check the primary face for looking away
-            # Use bounding box center position relative to frame center
             primary_face = results.detections[0]
-            bbox = primary_face.location_data.relative_bounding_box
+            bbox = primary_face.bounding_box
             
-            # Center of face bounding box
-            face_cx = bbox.xmin + bbox.width / 2
-            face_cy = bbox.ymin + bbox.height / 2
+            # Center of face bounding box (in pixels)
+            face_cx_px = bbox.origin_x + bbox.width / 2.0
+            face_cy_px = bbox.origin_y + bbox.height / 2.0
+            
+            # Normalize to 0.0 - 1.0
+            face_cx = face_cx_px / w
+            face_cy = face_cy_px / h
             
             # If face center is too far from frame center, consider "looking away"
             # Threshold: face center more than 35% from frame center

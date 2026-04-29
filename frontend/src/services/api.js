@@ -21,6 +21,7 @@ export const examAPI = {
   joinExam: (code) => API.post('/exams/join-exam', { code }),
   getExam: (id) => API.get(`/exams/${id}`),
   createExam: (data) => API.post('/exams/create', data),
+  submitExam: (id) => API.post(`/exams/${id}/submit`),
 };
 
 export const monitoringAPI = {

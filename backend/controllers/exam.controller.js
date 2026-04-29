@@ -60,7 +60,19 @@ const getExam = async (req, res) => {
   try {
     const exam = await Exam.findById(req.params.id);
     if (!exam) return res.status(404).json({ message: 'Exam not found' });
-    res.json(exam);
+
+    let attempt = null;
+    if (req.user && req.user.role !== 'admin') {
+      const now = new Date();
+      attempt = await Attempt.findOne({ user_id: req.user._id, exam_id: exam._id });
+      
+      // Auto-create attempt if student bypassed `joinExam` (e.g. from Dashboard shortcut)
+      if (!attempt && now >= exam.start_time && now <= exam.end_time) {
+        attempt = await Attempt.create({ user_id: req.user._id, exam_id: exam._id });
+      }
+    }
+
+    res.json({ exam, attempt });
   } catch (error) {
     res.status(500).json({ message: error.message });
   }
@@ -92,4 +104,23 @@ const createExam = async (req, res) => {
   }
 };
 
-module.exports = { getDashboard, joinExam, getExam, createExam };
+// @desc  Submit an exam attempt
+// @route POST /api/exams/:id/submit
+// @access Private (student)
+const submitExam = async (req, res) => {
+  try {
+    const attempt = await Attempt.findOne({ user_id: req.user._id, exam_id: req.params.id, status: 'in_progress' });
+    if (!attempt) return res.status(404).json({ message: 'Active attempt not found' });
+
+    attempt.status = 'submitted';
+    // Dummy score generation for demo purposes, could be customized later
+    attempt.score = Math.floor(Math.random() * (100 - 40 + 1)) + 40; 
+    await attempt.save();
+
+    res.json(attempt);
+  } catch (error) {
+    res.status(500).json({ message: error.message });
+  }
+};
+
+module.exports = { getDashboard, joinExam, getExam, createExam, submitExam };

@@ -13,7 +13,7 @@ const eventSchema = new mongoose.Schema({
   },
   event_type: {
     type: String,
-    enum: ['LOOKING_AWAY', 'MULTIPLE_FACES', 'NO_FACE', 'AUDIO_DETECTED', 'TAB_SWITCH', 'BLURRED_WINDOW'],
+    enum: ['LOOKING_AWAY', 'MULTIPLE_FACES', 'NO_FACE', 'AUDIO_DETECTED', 'TAB_SWITCH', 'BLURRED_WINDOW', 'MOUSE_OFF_SCREEN', 'KEYBOARD_SHORTCUT'],
     required: true,
   },
   confidence: {
