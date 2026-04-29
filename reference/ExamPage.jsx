@@ -8,7 +8,6 @@ const ExamPage = () => {
   const videoRef = useRef(null);
   const canvasRef = useRef(null);
   const cameraRef = useRef(null);
-  const videoStreamRef = useRef(null);
   const audioCtxRef = useRef(null);
   const analyserRef = useRef(null);
   const audioIntervalRef = useRef(null);
@@ -21,7 +20,6 @@ const ExamPage = () => {
   const [camError, setCamError] = useState('');
   const [isFullscreen, setIsFullscreen] = useState(false);
   const [aiStatus, setAiStatus] = useState('Initializing…');
-  const [snapshotStatus, setSnapshotStatus] = useState('Waiting for first upload…');
 
   const attemptRef = useRef(null);
   const timerRef = useRef(null);
@@ -33,29 +31,11 @@ const ExamPage = () => {
     if (!localStorage.getItem('token')) { navigate('/login'); return; }
     examAPI.getExam(id).then(res => {
       const data = res.data;
-      const loadedExam = data.exam || data;
-      setExam(loadedExam);
-      setTimeLeft(loadedExam.duration_minutes * 60);
+      setExam(data.exam || data);
+      setTimeLeft((data.exam || data).duration_minutes * 60);
       if (data.attempt) {
         setAttempt(data.attempt);
         setRiskScore(data.attempt.risk_score || 0);
-        return;
-      }
-
-      // Fallback: ensure attempt exists for snapshot/event logging.
-      if (loadedExam?.code) {
-        examAPI.joinExam(loadedExam.code)
-          .then((joinRes) => {
-            if (joinRes?.data?.attempt) {
-              setAttempt(joinRes.data.attempt);
-              setRiskScore(joinRes.data.attempt.risk_score || 0);
-            } else {
-              setSnapshotStatus('No active attempt found');
-            }
-          })
-          .catch(() => setSnapshotStatus('No active attempt found'));
-      } else {
-        setSnapshotStatus('No active attempt found');
       }
     }).catch(() => navigate('/dashboard'));
   }, [id, navigate]);
@@ -232,36 +212,6 @@ const ExamPage = () => {
     return () => { cancelled = true; if (cameraRef.current) cameraRef.current.stop(); };
   }, [logEvent]);
 
-  // --- Ensure webcam stream exists even if MediaPipe fails ---
-  useEffect(() => {
-    let cancelled = false;
-
-    const initCameraStream = async () => {
-      try {
-        const stream = await navigator.mediaDevices.getUserMedia({ video: true, audio: false });
-        if (cancelled) {
-          stream.getTracks().forEach((t) => t.stop());
-          return;
-        }
-        videoStreamRef.current = stream;
-        if (videoRef.current && !videoRef.current.srcObject) {
-          videoRef.current.srcObject = stream;
-        }
-      } catch (_) {
-        setCamError('Camera permission denied. Snapshots cannot be captured.');
-      }
-    };
-
-    initCameraStream();
-    return () => {
-      cancelled = true;
-      if (videoStreamRef.current) {
-        videoStreamRef.current.getTracks().forEach((t) => t.stop());
-        videoStreamRef.current = null;
-      }
-    };
-  }, []);
-
   // --- Audio monitoring (Web Audio API) ---
   useEffect(() => {
     let stream;
@@ -297,13 +247,7 @@ const ExamPage = () => {
 
   // --- 1 FPS frame upload pipeline ---
   useEffect(() => {
-    if (!attempt?._id) {
-      setSnapshotStatus('No active attempt found');
-      return;
-    }
-
-    const attemptId = attempt._id;
-    setSnapshotStatus('Starting snapshot upload…');
+    if (!attempt?._id) return;
 
     frameIntervalRef.current = setInterval(() => {
       if (!videoRef.current || !canvasRef.current) return;
@@ -314,19 +258,21 @@ const ExamPage = () => {
       ctx.drawImage(videoRef.current, 0, 0, 160, 120);
       const frame = canvas.toDataURL('image/jpeg', 0.5);
 
-      monitoringAPI.uploadFrame({ attempt_id: attemptId, frame })
+      monitoringAPI.uploadFrame({ attempt_id: attemptRef.current._id, frame })
         .then((res) => {
-          if (res?.data?.risk_score !== undefined) {
+          if (res.data.risk_score !== undefined) {
             setRiskScore(res.data.risk_score);
           }
-          if (Array.isArray(res?.data?.new_events) && res.data.new_events.length > 0) {
-            const nowIso = new Date().toISOString();
-            const newEventObjs = res.data.new_events.map((ev) => ({ event_type: ev, timestamp: nowIso }));
-            setEvents((prev) => [...newEventObjs, ...prev].slice(0, 19));
+          if (res.data.new_events && res.data.new_events.length > 0) {
+            const currentTimestamp = new Date().toISOString();
+            const newEventObjs = res.data.new_events.map(ev => ({ event_type: ev, timestamp: currentTimestamp }));
+            setEvents(prev => [...newEventObjs, ...prev].slice(0, 19));
           }
-          if (res?.data?.ai) {
-            if (res.data.ai.phone_detected) {
-              setAiStatus('📱 Phone detected!');
+          if (res.data.ai) {
+            if (res.data.ai.mobile_detected) {
+              setAiStatus('📱 Mobile Phone Detected!');
+            } else if (res.data.ai.hand_detected) {
+              setAiStatus('✋ Hand Detected!');
             } else if (!res.data.ai.face_detected) {
               setAiStatus('⚠ No face detected');
             } else if (res.data.ai.face_count > 1) {
@@ -337,19 +283,8 @@ const ExamPage = () => {
               setAiStatus('✅ Face detected — Normal');
             }
           }
-
-          const hasFrame = Boolean(res?.data?.has_frame);
-          const savedLen = Number(res?.data?.saved_frame_length || 0);
-          setSnapshotStatus(
-            hasFrame && savedLen > 0
-              ? `Last upload: ${new Date().toLocaleTimeString()} (${savedLen} bytes)`
-              : 'Uploaded, but backend did not persist frame'
-          );
         })
-        .catch((err) => {
-          const code = err?.response?.status;
-          setSnapshotStatus(`Upload failed${code ? ` (${code})` : ''}`);
-        });
+        .catch(() => {});
     }, 1000);
 
     return () => { if (frameIntervalRef.current) clearInterval(frameIntervalRef.current); };
@@ -443,7 +378,6 @@ const ExamPage = () => {
             <p style={{ fontSize: '0.7rem', color: 'var(--text-secondary)', marginBottom: '0.4rem', textTransform: 'uppercase', letterSpacing: '0.05em' }}>📷 Camera</p>
             <video ref={videoRef} autoPlay muted playsInline
               style={{ width: '100%', borderRadius: '10px', background: '#000', aspectRatio: '4/3', objectFit: 'cover' }} />
-            {camError && <p style={{ marginTop: '0.45rem', fontSize: '0.75rem', color: 'var(--danger)' }}>{camError}</p>}
           </div>
 
           {/* AI Status */}
@@ -465,9 +399,6 @@ const ExamPage = () => {
               <span style={{ width: '8px', height: '8px', borderRadius: '50%', background: 'var(--success)', display: 'inline-block', animation: 'spin 2s linear infinite' }} />
               <span style={{ fontSize: '0.8rem', fontWeight: '600', color: 'var(--text-primary)' }}>🎥 Video · 🎤 Audio · 🌐 Browser</span>
             </div>
-            <p style={{ marginTop: '0.45rem', fontSize: '0.72rem', color: snapshotStatus.startsWith('Upload failed') ? 'var(--danger)' : 'var(--text-secondary)' }}>
-              📸 {snapshotStatus}
-            </p>
           </div>
 
           {/* Recent Events */}

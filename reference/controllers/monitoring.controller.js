@@ -1,11 +1,15 @@
 const Event = require('../models/Event');
 const Attempt = require('../models/Attempt');
 const AI_SERVICE_URL = process.env.AI_SERVICE_URL || 'http://localhost:8000';
+
+// In-memory simple throttle map: attempt_id_event_type -> timestamp
 const lastEventCache = new Map();
 
 // Risk score weights (from Planned.md)
 const RISK_WEIGHTS = {
+  MOBILE_DETECTED: 40,
   MULTIPLE_FACES: 30,
+  HAND_DETECTED: 25,
   NO_FACE: 20,
   LOOKING_AWAY: 20,
   AUDIO_DETECTED: 15,
@@ -13,7 +17,6 @@ const RISK_WEIGHTS = {
   BLURRED_WINDOW: 15,
   MOUSE_OFF_SCREEN: 10,
   KEYBOARD_SHORTCUT: 15,
-  PHONE_DETECTED: 35,
 };
 
 // @desc  Log a proctoring event
@@ -98,14 +101,12 @@ const uploadFrame = async (req, res) => {
       return res.status(403).json({ message: 'Not authorized' });
     }
 
-    // Store latest frame for Admin live view atomically to avoid overwrite races
-    await Attempt.updateOne(
-      { _id: attempt_id },
-      { $set: { last_frame: frame, updatedAt: new Date() } }
-    );
+    // Store latest frame for Admin live view
+    attempt.last_frame = frame;
+    await attempt.save();
 
     // Forward to Python AI service for face analysis
-    let aiResult = { face_detected: true, face_count: 1, looking_away: false };
+    let aiResult = { face_detected: true, face_count: 1, looking_away: false, mobile_detected: false, hand_detected: false };
     try {
       const aiRes = await fetch(`${AI_SERVICE_URL}/analyze-frame`, {
         method: 'POST',
@@ -123,41 +124,30 @@ const uploadFrame = async (req, res) => {
     if (!aiResult.face_detected) autoEvents.push('NO_FACE');
     if (aiResult.face_count > 1) autoEvents.push('MULTIPLE_FACES');
     if (aiResult.looking_away) autoEvents.push('LOOKING_AWAY');
-    if (aiResult.phone_detected) autoEvents.push('PHONE_DETECTED');
+    if (aiResult.mobile_detected) autoEvents.push('MOBILE_DETECTED');
+    if (aiResult.hand_detected) autoEvents.push('HAND_DETECTED');
 
-    let riskIncrementTotal = 0;
-    const newEvents = [];
     const now = Date.now();
+    let riskUpdated = false;
+    const newEvents = [];
+
     for (const event_type of autoEvents) {
       const cacheKey = `${attempt_id}_${event_type}`;
       const lastTime = lastEventCache.get(cacheKey) || 0;
-      if (now - lastTime <= 15000) continue;
-
-      const confidence = event_type === 'PHONE_DETECTED'
-        ? (aiResult.phone_confidence || 0.9)
-        : 0.9;
-      await Event.create({ user_id: req.user._id, attempt_id, event_type, confidence });
-      riskIncrementTotal += RISK_WEIGHTS[event_type] || 0;
-      newEvents.push(event_type);
-      lastEventCache.set(cacheKey, now);
+      
+      // Throttle: Max 1 event of same type every 15 seconds
+      if (now - lastTime > 15000) {
+        await Event.create({ user_id: req.user._id, attempt_id, event_type, confidence: 0.9 });
+        const riskIncrement = RISK_WEIGHTS[event_type] || 0;
+        attempt.risk_score = Math.min(100, attempt.risk_score + riskIncrement);
+        lastEventCache.set(cacheKey, now);
+        riskUpdated = true;
+        newEvents.push(event_type);
+      }
     }
+    if (riskUpdated) await attempt.save();
 
-    const updatedAttempt = await Attempt.findById(attempt_id).select('risk_score last_frame');
-    if (!updatedAttempt) return res.status(404).json({ message: 'Attempt not found after update' });
-
-    if (riskIncrementTotal > 0) {
-      updatedAttempt.risk_score = Math.min(100, updatedAttempt.risk_score + riskIncrementTotal);
-      await updatedAttempt.save();
-    }
-
-    res.json({
-      status: 'ok',
-      ai: aiResult,
-      risk_score: updatedAttempt.risk_score,
-      new_events: newEvents,
-      has_frame: Boolean(updatedAttempt.last_frame),
-      saved_frame_length: updatedAttempt.last_frame ? updatedAttempt.last_frame.length : 0,
-    });
+    res.json({ status: 'ok', ai: aiResult, risk_score: attempt.risk_score, new_events: newEvents });
   } catch (error) {
     res.status(500).json({ message: error.message });
   }
