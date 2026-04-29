@@ -106,7 +106,7 @@ const uploadFrame = async (req, res) => {
     );
 
     // Forward to Python AI service for face analysis
-    let aiResult = { face_detected: true, face_count: 1, looking_away: false };
+    let aiResult = { face_detected: true, face_count: 1, looking_away: false, mobile_detected: false, phone_detected: false, object_detected: false };
     try {
       const aiRes = await fetch(`${AI_SERVICE_URL}/analyze-frame`, {
         method: 'POST',
@@ -124,7 +124,7 @@ const uploadFrame = async (req, res) => {
     if (!aiResult.face_detected) autoEvents.push('NO_FACE');
     if (aiResult.face_count > 1) autoEvents.push('MULTIPLE_FACES');
     if (aiResult.looking_away) autoEvents.push('LOOKING_AWAY');
-    if (aiResult.phone_detected) autoEvents.push('PHONE_DETECTED');
+    if (aiResult.mobile_detected || aiResult.phone_detected) autoEvents.push('PHONE_DETECTED');
     if (aiResult.object_detected) autoEvents.push('OBJECT_DETECTED');
 
     let riskIncrementTotal = 0;
@@ -136,7 +136,7 @@ const uploadFrame = async (req, res) => {
       if (now - lastTime <= 15000) continue;
 
       const confidence = event_type === 'PHONE_DETECTED'
-        ? (aiResult.phone_confidence || 0.9)
+        ? (aiResult.mobile_confidence || aiResult.phone_confidence || 0.9)
         : event_type === 'OBJECT_DETECTED'
           ? (aiResult.object_confidence || 0.85)
           : 0.9;

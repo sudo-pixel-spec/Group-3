@@ -100,6 +100,8 @@ async def analyze_frame(req: FrameRequest):
         
         phone_detected = False
         phone_confidence = 0.0
+        mobile_detected = False
+        mobile_confidence = 0.0
         object_detected = False
         object_confidence = 0.0
         detected_objects = []
@@ -109,10 +111,10 @@ async def analyze_frame(req: FrameRequest):
                 # Speed-first inference: smaller frame + capped detections.
                 yolo_results = yolo_model.predict(
                     source=img,
-                    conf=0.45,
+                    conf=0.25,
                     verbose=False,
-                    imgsz=320,
-                    max_det=6,
+                    imgsz=256,
+                    max_det=8,
                 )
                 if yolo_results and len(yolo_results) > 0 and yolo_results[0].boxes is not None:
                     boxes = yolo_results[0].boxes
@@ -133,6 +135,8 @@ async def analyze_frame(req: FrameRequest):
                             if class_name == "cell phone":
                                 phone_detected = True
                                 phone_confidence = max(phone_confidence, conf)
+                                mobile_detected = True
+                                mobile_confidence = max(mobile_confidence, conf)
             except Exception:
                 # Keep service resilient if YOLO inference fails.
                 pass
@@ -144,6 +148,8 @@ async def analyze_frame(req: FrameRequest):
                 "face_count": face_count,
                 "multiple_faces": face_count > 1,
                 "looking_away": looking_away,
+                "mobile_detected": mobile_detected,
+                "mobile_confidence": mobile_confidence,
                 "phone_detected": phone_detected,
                 "phone_confidence": phone_confidence,
                 "object_detected": object_detected,
@@ -160,6 +166,8 @@ async def analyze_frame(req: FrameRequest):
                 "face_count": 1,
                 "multiple_faces": False,
                 "looking_away": False,
+                "mobile_detected": False,
+                "mobile_confidence": 0.0,
                 "phone_detected": False,
                 "phone_confidence": 0.0,
                 "object_detected": False,

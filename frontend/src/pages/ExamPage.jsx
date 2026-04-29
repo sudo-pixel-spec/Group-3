@@ -325,7 +325,7 @@ const ExamPage = () => {
             setEvents((prev) => [...newEventObjs, ...prev].slice(0, 19));
           }
           if (res?.data?.ai) {
-            if (res.data.ai.phone_detected) {
+            if (res.data.ai.mobile_detected || res.data.ai.phone_detected) {
               setAiStatus('📱 Phone detected!');
             } else if (res.data.ai.object_detected) {
               const labels = Array.isArray(res.data.ai.detected_objects)
