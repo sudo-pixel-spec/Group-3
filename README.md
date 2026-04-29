@@ -1,67 +1,80 @@
-# 🎓 AI-Powered Exam Proctoring System
+AI-Based Online Examination Proctoring System
 
-A full-stack proctoring platform that monitors students during online exams using AI-powered face detection, audio analysis, and browser behavior tracking.
+An intelligent web-based examination platform designed to conduct secure MCQ examinations with real-time webcam monitoring and automated cheating detection. The system combines a modern exam interface with browser-based AI proctoring to maintain exam integrity during online assessments.
 
-## 📁 Project Structure
+Project Overview
 
-```
-Group 3/
-├── backend/          # Node.js + Express API
-├── frontend/         # React + Vite Student/Admin UI
-└── ai_service/       # Python + FastAPI AI analysis service
-```
+This application allows students to log in, attempt multiple-choice examinations, and be monitored through their webcam throughout the test session. The system detects suspicious behavior such as absence from screen, multiple faces, looking away frequently, tab switching, and fullscreen exit attempts. All violations are logged with timestamps for review.
 
----
+The platform is designed for colleges, institutes, recruitment tests, and remote assessments where secure online examinations are required.
 
-## 🚀 Getting Started
+Key Features
+Student Examination Portal
+Secure student login
+Timed MCQ examination interface
+Auto-save answers during test
+Question navigation panel
+Automatic submission on timer completion
+AI Proctoring System
+Real-time webcam monitoring
+Face presence detection
+Multiple face detection
+Head movement / looking away detection
+Suspicious activity warnings
+Optional screenshot evidence capture
+Browser Security Monitoring
+Detect tab switching
+Detect window focus loss
+Detect fullscreen exit
+Disable copy/paste and right click during exam
+Violation counting with auto-submit rules
+Admin / Faculty Module
+Create examinations
+Manage question banks
+Review student submissions
+View proctoring violation logs
+Generate results
+Technology Stack
+Frontend
+React.js
+AI Detection
+MediaPipe Face Detection
+MediaPipe Face Mesh
+JavaScript Browser APIs
+Backend
+Firebase / Node.js / Express.js
+Database
+Firebase Firestore / MongoDB
+How It Works
+Student logs into the portal
+Webcam permission is requested
+Examination starts in fullscreen mode
+AI continuously monitors candidate behavior
+Suspicious events are recorded in real time
+Answers are submitted manually or automatically after timer ends
+Admin reviews reports and results
+Use Cases
+University online exams
+Internal college assessments
+Recruitment aptitude tests
+Certification examinations
+Remote learning evaluations
+Objective
 
-### 1. Backend (Node.js)
+To create a smart, scalable, and secure online examination system that reduces manual invigilation effort while improving fairness and credibility of remote assessments.
 
-```bash
-cd backend
-cp .env.example .env    # Fill in your MONGO_URI and JWT_SECRET
-npm install
-npm run dev             # Starts on http://localhost:5000
-```
+Future Enhancements
+Voice/noise detection
+Mobile phone object detection
+Live proctor dashboard
+Face recognition authentication
+AI risk score generation
+Detailed analytics reports
+Team Contribution Modules
+Frontend UI & Exam Flow
+AI Proctoring Module
+Backend APIs & Database
+Security Monitoring & Integration
+Conclusion
 
-### 2. Frontend (React)
-
-```bash
-cd frontend
-npm install
-npm run dev             # Starts on http://localhost:5173
-```
-
-### 3. AI Service (Python)
-
-```bash
-cd ai_service
-pip install -r requirements.txt
-python main.py          # Starts on http://localhost:8000
-```
-
----
-
-## 🌐 API Overview
-
-| Method | Endpoint                   | Description            |
-|--------|----------------------------|------------------------|
-| POST   | /api/auth/register         | Register a new user    |
-| POST   | /api/auth/login            | Login and get JWT      |
-| GET    | /api/exams/dashboard       | Student dashboard data |
-| POST   | /api/exams/join-exam       | Join exam by code      |
-| GET    | /api/exams/:id             | Get exam details       |
-| POST   | /api/monitoring/log-event  | Log a proctoring event |
-
----
-
-## 🧠 Tech Stack
-
-- **Frontend**: React + Vite + React Router
-- **Backend**: Node.js + Express + MongoDB (Mongoose)
-- **AI**: Python + FastAPI + OpenCV + MediaPipe
-- **Auth**: JWT (JSON Web Tokens)
-
----
-
-## 👥 Group 3
+This project demonstrates how artificial intelligence and web technologies can be combined to solve real-world remote examination challenges by building a reliable, efficient, and modern online proctoring platform.
