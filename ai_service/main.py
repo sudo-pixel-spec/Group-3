@@ -25,12 +25,14 @@ base_options = python.BaseOptions(model_asset_path='blaze_face_short_range.tflit
 options = vision.FaceDetectorOptions(base_options=base_options, min_detection_confidence=0.5)
 face_detector = vision.FaceDetector.create_from_options(options)
 yolo_model = None
+yolo_class_names = {}
 
 try:
-    # COCO class 67 => "cell phone"
     yolo_model = YOLO("yolov8n.pt")
+    yolo_class_names = yolo_model.names or {}
 except Exception:
     yolo_model = None
+    yolo_class_names = {}
 
 class FrameRequest(BaseModel):
     frame: str  # base64 data URL
@@ -98,24 +100,39 @@ async def analyze_frame(req: FrameRequest):
         
         phone_detected = False
         phone_confidence = 0.0
-        phone_detections = []
+        object_detected = False
+        object_confidence = 0.0
+        detected_objects = []
 
         if yolo_model is not None:
             try:
+                # Speed-first inference: smaller frame + capped detections.
                 yolo_results = yolo_model.predict(
                     source=img,
-                    conf=0.35,
-                    classes=[67],  # cell phone
+                    conf=0.45,
                     verbose=False,
-                    imgsz=640,
+                    imgsz=320,
+                    max_det=6,
                 )
                 if yolo_results and len(yolo_results) > 0 and yolo_results[0].boxes is not None:
                     boxes = yolo_results[0].boxes
                     if len(boxes) > 0:
-                        phone_detected = True
+                        object_detected = True
                         confs = boxes.conf.detach().cpu().numpy().tolist()
-                        phone_confidence = float(max(confs)) if confs else 0.0
-                        phone_detections = [float(c) for c in confs]
+                        classes = boxes.cls.detach().cpu().numpy().tolist() if boxes.cls is not None else []
+                        object_confidence = float(max(confs)) if confs else 0.0
+
+                        for idx, cls_id in enumerate(classes):
+                            class_name = yolo_class_names.get(int(cls_id), f"class_{int(cls_id)}")
+                            conf = float(confs[idx]) if idx < len(confs) else 0.0
+                            if class_name != "person":
+                                detected_objects.append({
+                                    "label": class_name,
+                                    "confidence": conf,
+                                })
+                            if class_name == "cell phone":
+                                phone_detected = True
+                                phone_confidence = max(phone_confidence, conf)
             except Exception:
                 # Keep service resilient if YOLO inference fails.
                 pass
@@ -129,7 +146,9 @@ async def analyze_frame(req: FrameRequest):
                 "looking_away": looking_away,
                 "phone_detected": phone_detected,
                 "phone_confidence": phone_confidence,
-                "phone_detection_count": len(phone_detections),
+                "object_detected": object_detected,
+                "object_confidence": object_confidence,
+                "detected_objects": detected_objects,
             }
         }
     except Exception as e:
@@ -143,7 +162,9 @@ async def analyze_frame(req: FrameRequest):
                 "looking_away": False,
                 "phone_detected": False,
                 "phone_confidence": 0.0,
-                "phone_detection_count": 0,
+                "object_detected": False,
+                "object_confidence": 0.0,
+                "detected_objects": [],
             }
         }
 

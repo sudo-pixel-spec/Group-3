@@ -35,6 +35,7 @@ const AdminStudentDetail = () => {
     TAB_SWITCH: '🔀',
     BLURRED_WINDOW: '🌐',
     PHONE_DETECTED: '📱',
+    OBJECT_DETECTED: '📦',
   };
 
   if (loading) return <div className="page-center"><div className="spinner" /></div>;
@@ -129,7 +130,9 @@ const AdminStudentDetail = () => {
                     <div style={{
                       position: 'absolute', left: '-1.55rem', top: '0.45rem',
                       width: '12px', height: '12px', borderRadius: '50%',
-                      background: event.event_type === 'MULTIPLE_FACES' || event.event_type === 'NO_FACE' ? 'var(--danger)' : 'var(--warning)',
+                      background: event.event_type === 'MULTIPLE_FACES' || event.event_type === 'NO_FACE' || event.event_type === 'PHONE_DETECTED'
+                        ? 'var(--danger)'
+                        : 'var(--warning)',
                       border: '2px solid var(--bg-base)'
                     }} />
                     

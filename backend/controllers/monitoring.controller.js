@@ -14,6 +14,7 @@ const RISK_WEIGHTS = {
   MOUSE_OFF_SCREEN: 10,
   KEYBOARD_SHORTCUT: 15,
   PHONE_DETECTED: 35,
+  OBJECT_DETECTED: 10,
 };
 
 // @desc  Log a proctoring event
@@ -124,6 +125,7 @@ const uploadFrame = async (req, res) => {
     if (aiResult.face_count > 1) autoEvents.push('MULTIPLE_FACES');
     if (aiResult.looking_away) autoEvents.push('LOOKING_AWAY');
     if (aiResult.phone_detected) autoEvents.push('PHONE_DETECTED');
+    if (aiResult.object_detected) autoEvents.push('OBJECT_DETECTED');
 
     let riskIncrementTotal = 0;
     const newEvents = [];
@@ -135,7 +137,9 @@ const uploadFrame = async (req, res) => {
 
       const confidence = event_type === 'PHONE_DETECTED'
         ? (aiResult.phone_confidence || 0.9)
-        : 0.9;
+        : event_type === 'OBJECT_DETECTED'
+          ? (aiResult.object_confidence || 0.85)
+          : 0.9;
       await Event.create({ user_id: req.user._id, attempt_id, event_type, confidence });
       riskIncrementTotal += RISK_WEIGHTS[event_type] || 0;
       newEvents.push(event_type);

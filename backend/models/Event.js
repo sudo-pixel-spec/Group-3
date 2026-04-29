@@ -23,6 +23,7 @@ const eventSchema = new mongoose.Schema({
       'MOUSE_OFF_SCREEN',
       'KEYBOARD_SHORTCUT',
       'PHONE_DETECTED',
+      'OBJECT_DETECTED',
     ],
     required: true,
   },

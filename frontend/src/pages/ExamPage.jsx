@@ -327,6 +327,11 @@ const ExamPage = () => {
           if (res?.data?.ai) {
             if (res.data.ai.phone_detected) {
               setAiStatus('📱 Phone detected!');
+            } else if (res.data.ai.object_detected) {
+              const labels = Array.isArray(res.data.ai.detected_objects)
+                ? res.data.ai.detected_objects.slice(0, 2).map((obj) => obj.label).join(', ')
+                : '';
+              setAiStatus(labels ? `📦 Object detected: ${labels}` : '📦 Object detected');
             } else if (!res.data.ai.face_detected) {
               setAiStatus('⚠ No face detected');
             } else if (res.data.ai.face_count > 1) {
