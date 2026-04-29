@@ -1,6 +1,6 @@
 const Exam = require('../models/Exam');
 const Attempt = require('../models/Attempt');
-const { sendExamReportEmail } = require('../utils/sendExamReportEmail');
+const { sendExamReportEmail, extractMailerError } = require('../utils/sendExamReportEmail');
 
 // @desc  Get student dashboard (upcoming + past exams)
 // @route GET /api/exams/dashboard
@@ -132,7 +132,7 @@ const submitExam = async (req, res) => {
       });
     } catch (mailError) {
       // Do not block successful submission if email delivery fails.
-      console.error('Failed to send exam report email:', mailError.message);
+      console.error('Failed to send exam report email:', extractMailerError(mailError));
     }
 
     res.json(attempt);

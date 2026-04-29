@@ -1,6 +1,24 @@
 const { MailerSend, EmailParams, Sender, Recipient } = require('mailersend');
 
 const formatDate = (value) => (value ? new Date(value).toLocaleString() : 'N/A');
+const safeStringify = (value) => {
+  try {
+    return JSON.stringify(value);
+  } catch (error) {
+    return String(value);
+  }
+};
+
+const extractMailerError = (error) => {
+  if (!error) return 'Unknown MailerSend error';
+  if (typeof error === 'string') return error;
+  if (error.message) return error.message;
+
+  const responseData = error.response?.data || error.body;
+  if (responseData) return safeStringify(responseData);
+
+  return safeStringify(error);
+};
 
 const sendExamReportEmail = async ({ toEmail, examTitle, examCode, score, riskScore, startedAt, endedAt }) => {
   const apiKey = process.env.MAILERSEND_API_KEY;
@@ -12,7 +30,7 @@ const sendExamReportEmail = async ({ toEmail, examTitle, examCode, score, riskSc
 
   const fromName = process.env.MAILERSEND_FROM_NAME || 'ProctorAI';
   const sender = new Sender(fromEmail, fromName);
-  const recipients = [new Recipient(toEmail)];
+  const recipients = [new Recipient(toEmail, 'Student')];
   const subject = `Exam Report: ${examTitle || 'Your Exam'}`;
 
   const text = [
@@ -49,9 +67,13 @@ const sendExamReportEmail = async ({ toEmail, examTitle, examCode, score, riskSc
     .setHtml(html);
 
   const mailerSend = new MailerSend({ apiKey });
-  await mailerSend.email.send(emailParams);
+  try {
+    await mailerSend.email.send(emailParams);
+  } catch (error) {
+    throw new Error(extractMailerError(error));
+  }
 
   return { skipped: false };
 };
 
-module.exports = { sendExamReportEmail };
+module.exports = { sendExamReportEmail, extractMailerError };
