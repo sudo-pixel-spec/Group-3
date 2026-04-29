@@ -1,28 +1,51 @@
 import React, { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { monitoringAPI, examAPI } from '../services/api';
+import { examAPI } from '../services/api';
 
 const AdminDashboard = () => {
   const navigate = useNavigate();
   const user = JSON.parse(localStorage.getItem('user') || '{}');
-  const [liveAttempts, setLiveAttempts] = useState([]);
+  const [examList, setExamList] = useState([]);
+  const [selectedExamId, setSelectedExamId] = useState('');
+  const [selectedExamData, setSelectedExamData] = useState(null);
   const [loading, setLoading] = useState(true);
+  const [attemptsLoading, setAttemptsLoading] = useState(false);
   const [showCreate, setShowCreate] = useState(false);
   const [examForm, setExamForm] = useState({ title: '', form_url: '', start_time: '', end_time: '', duration_minutes: 60 });
   const [createMsg, setCreateMsg] = useState('');
 
   useEffect(() => {
     if (!localStorage.getItem('token') || user.role !== 'admin') { navigate('/login'); return; }
-    fetchLive();
-    const interval = setInterval(fetchLive, 5000); // refresh every 5s
+    fetchExams();
+    const interval = setInterval(() => {
+      fetchExams();
+      if (selectedExamId) fetchExamAttempts(selectedExamId);
+    }, 5000);
     return () => clearInterval(interval);
-  }, [navigate]);
+  }, [navigate, selectedExamId]);
 
-  const fetchLive = () => {
-    monitoringAPI.getLive()
-      .then(res => setLiveAttempts(res.data))
+  const fetchExams = () => {
+    examAPI.getAdminExamList()
+      .then((res) => {
+        const exams = res.data || [];
+        setExamList(exams);
+        if (!selectedExamId && exams.length > 0) {
+          const firstExamId = exams[0]._id;
+          setSelectedExamId(firstExamId);
+          fetchExamAttempts(firstExamId);
+        }
+      })
       .catch(() => {})
       .finally(() => setLoading(false));
+  };
+
+  const fetchExamAttempts = (examId) => {
+    if (!examId) return;
+    setAttemptsLoading(true);
+    examAPI.getAdminExamAttempts(examId)
+      .then((res) => setSelectedExamData(res.data))
+      .catch(() => {})
+      .finally(() => setAttemptsLoading(false));
   };
 
   const handleLogout = () => { localStorage.clear(); navigate('/login'); };
@@ -34,6 +57,7 @@ const AdminDashboard = () => {
       const res = await examAPI.createExam(examForm);
       setCreateMsg(`✅ Exam created! Code: ${res.data.code}`);
       setExamForm({ title: '', form_url: '', start_time: '', end_time: '', duration_minutes: 60 });
+      fetchExams();
     } catch (err) {
       setCreateMsg(`❌ ${err.response?.data?.message || 'Failed to create exam'}`);
     }
@@ -44,6 +68,43 @@ const AdminDashboard = () => {
     if (score >= 30) return <span className="badge badge-warning">🟡 Suspicious</span>;
     return <span className="badge badge-success">🟢 Normal</span>;
   };
+
+  const renderStudentCard = (attempt) => (
+    <div
+      key={attempt._id}
+      className="card"
+      style={{ cursor: 'pointer', transition: 'var(--transition)' }}
+      onClick={() => navigate(`/admin/student/${attempt._id}`)}
+    >
+      <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '0.75rem' }}>
+        {getRiskBadge(attempt.risk_score)}
+        <span style={{ color: 'var(--text-secondary)', fontSize: '0.78rem' }}>
+          {new Date(attempt.updatedAt).toLocaleTimeString()}
+        </span>
+      </div>
+      {attempt.last_frame && (
+        <img
+          src={attempt.last_frame}
+          alt="Live snapshot"
+          style={{ width: '100%', height: '100px', objectFit: 'cover', borderRadius: '6px', marginBottom: '0.75rem', background: '#000' }}
+        />
+      )}
+      <p style={{ fontWeight: '600', marginBottom: '0.25rem' }}>{attempt.user_id?.email || 'Unknown'}</p>
+      <p style={{ color: 'var(--text-secondary)', fontSize: '0.85rem', marginBottom: '0.5rem' }}>
+        Status: {attempt.status.replace(/_/g, ' ')}
+      </p>
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+        <p style={{ fontWeight: '700', fontSize: '1.1rem' }}>{attempt.risk_score}</p>
+        <button
+          className="btn btn-ghost"
+          style={{ padding: '0.35rem 0.75rem', fontSize: '0.75rem' }}
+          onClick={(e) => { e.stopPropagation(); navigate(`/admin/student/${attempt._id}`); }}
+        >
+          View Details →
+        </button>
+      </div>
+    </div>
+  );
 
   return (
     <>
@@ -109,52 +170,87 @@ const AdminDashboard = () => {
           </div>
         )}
 
-        {/* Live Monitor */}
-        <div>
-          <h2 className="section-title">
-            📡 Live Sessions
-            <span style={{ marginLeft: 'auto', fontSize: '0.75rem', color: 'var(--text-secondary)', fontWeight: 400, textTransform: 'none', letterSpacing: 0 }}>
-              Auto-refreshes every 5s
-            </span>
-          </h2>
-          {loading ? <div className="spinner" /> : liveAttempts.length === 0
-            ? <div className="card" style={{ textAlign: 'center', padding: '3rem', color: 'var(--text-secondary)' }}>
-                No active exam sessions right now.
+        {/* Exam List */}
+        <div style={{ marginBottom: '2rem' }}>
+          <h2 className="section-title">📝 Exams</h2>
+          {loading ? <div className="spinner" /> : examList.length === 0
+            ? <div className="card" style={{ textAlign: 'center', padding: '2rem', color: 'var(--text-secondary)' }}>
+                No exams found.
               </div>
             : <div className="grid-2">
-                {liveAttempts.map(attempt => (
-                  <div key={attempt._id} className="card" style={{ cursor: 'pointer', transition: 'var(--transition)' }}
-                    onClick={() => navigate(`/admin/student/${attempt._id}`)}>
-                    <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '0.75rem' }}>
-                      {getRiskBadge(attempt.risk_score)}
-                      <span style={{ color: 'var(--text-secondary)', fontSize: '0.78rem' }}>
-                        {new Date(attempt.start_time).toLocaleTimeString()}
-                      </span>
-                    </div>
-                    {/* Live frame thumbnail */}
-                    {attempt.last_frame && (
-                      <img src={attempt.last_frame} alt="Live snapshot"
-                        style={{ width: '100%', height: '100px', objectFit: 'cover', borderRadius: '6px', marginBottom: '0.75rem', background: '#000' }} />
-                    )}
-                    <p style={{ fontWeight: '600', marginBottom: '0.25rem' }}>{attempt.user_id?.email || 'Unknown'}</p>
-                    <p style={{ color: 'var(--text-secondary)', fontSize: '0.85rem', marginBottom: '0.75rem' }}>
-                      {attempt.exam_id?.title || 'Exam'} · <span style={{ fontFamily: 'monospace' }}>{attempt.exam_id?.code}</span>
+                {examList.map((exam) => (
+                  <div
+                    key={exam._id}
+                    className="card"
+                    style={{
+                      cursor: 'pointer',
+                      borderColor: selectedExamId === exam._id ? 'rgba(108,99,255,0.4)' : undefined,
+                    }}
+                    onClick={() => {
+                      setSelectedExamId(exam._id);
+                      fetchExamAttempts(exam._id);
+                    }}
+                  >
+                    <p style={{ fontWeight: '700', marginBottom: '0.35rem' }}>{exam.title}</p>
+                    <p style={{ color: 'var(--text-secondary)', fontSize: '0.82rem', marginBottom: '0.6rem' }}>
+                      Code: <span style={{ fontFamily: 'monospace' }}>{exam.code}</span>
                     </p>
-                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                      <div>
-                        <p style={{ fontSize: '0.72rem', color: 'var(--text-secondary)', textTransform: 'uppercase', letterSpacing: '0.04em' }}>Risk Score</p>
-                        <p style={{ fontWeight: '700', fontSize: '1.3rem', color: attempt.risk_score >= 60 ? 'var(--danger)' : attempt.risk_score >= 30 ? 'var(--warning)' : 'var(--success)' }}>
-                          {attempt.risk_score}
-                        </p>
-                      </div>
-                      <button className="btn btn-ghost" style={{ padding: '0.35rem 0.75rem', fontSize: '0.75rem' }}
-                        onClick={(e) => { e.stopPropagation(); navigate(`/admin/student/${attempt._id}`); }}>
-                        View Details →
-                      </button>
+                    <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap' }}>
+                      <span className="badge badge-success">Answering: {exam.stats?.answering || 0}</span>
+                      <span className="badge badge-warning">Offline: {exam.stats?.offline || 0}</span>
+                      <span className="badge">Answered: {exam.stats?.answered || 0}</span>
                     </div>
                   </div>
                 ))}
               </div>
+          }
+        </div>
+
+        {/* Selected Exam Students */}
+        <div>
+          <h2 className="section-title">
+            📡 Student Monitoring
+            <span style={{ marginLeft: 'auto', fontSize: '0.75rem', color: 'var(--text-secondary)', fontWeight: 400, textTransform: 'none', letterSpacing: 0 }}>
+              Auto-refreshes every 5s
+            </span>
+          </h2>
+          {!selectedExamId
+            ? <div className="card" style={{ textAlign: 'center', padding: '3rem', color: 'var(--text-secondary)' }}>
+                Select an exam to view students.
+              </div>
+            : attemptsLoading
+              ? <div className="spinner" />
+              : (
+                <>
+                  <h3 style={{ marginBottom: '0.75rem' }}>
+                    {selectedExamData?.exam?.title || 'Selected Exam'} ({selectedExamData?.exam?.code || '---'})
+                  </h3>
+
+                  <p style={{ color: 'var(--text-secondary)', marginBottom: '0.6rem' }}>🟢 Answering Live</p>
+                  {selectedExamData?.grouped?.answering?.length
+                    ? <div className="grid-2" style={{ marginBottom: '1.25rem' }}>
+                        {selectedExamData.grouped.answering.map(renderStudentCard)}
+                      </div>
+                    : <div className="card" style={{ marginBottom: '1.25rem', color: 'var(--text-secondary)' }}>No students currently answering.</div>
+                  }
+
+                  <p style={{ color: 'var(--text-secondary)', marginBottom: '0.6rem' }}>🟡 Offline (in-progress but inactive)</p>
+                  {selectedExamData?.grouped?.offline?.length
+                    ? <div className="grid-2" style={{ marginBottom: '1.25rem' }}>
+                        {selectedExamData.grouped.offline.map(renderStudentCard)}
+                      </div>
+                    : <div className="card" style={{ marginBottom: '1.25rem', color: 'var(--text-secondary)' }}>No offline students.</div>
+                  }
+
+                  <p style={{ color: 'var(--text-secondary)', marginBottom: '0.6rem' }}>✅ Answered / Submitted</p>
+                  {selectedExamData?.grouped?.answered?.length
+                    ? <div className="grid-2">
+                        {selectedExamData.grouped.answered.map(renderStudentCard)}
+                      </div>
+                    : <div className="card" style={{ color: 'var(--text-secondary)' }}>No submitted attempts yet.</div>
+                  }
+                </>
+              )
           }
         </div>
       </div>

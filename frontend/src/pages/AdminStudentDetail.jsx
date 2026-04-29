@@ -12,10 +12,16 @@ const AdminStudentDetail = () => {
     const user = JSON.parse(localStorage.getItem('user') || '{}');
     if (!localStorage.getItem('token') || user.role !== 'admin') { navigate('/login'); return; }
 
-    monitoringAPI.getAttemptDetail(attemptId)
-      .then(res => setData(res.data))
-      .catch(() => navigate('/admin/dashboard'))
-      .finally(() => setLoading(false));
+    const fetchDetail = () => {
+      monitoringAPI.getAttemptDetail(attemptId)
+        .then(res => setData(res.data))
+        .catch(() => navigate('/admin/dashboard'))
+        .finally(() => setLoading(false));
+    };
+
+    fetchDetail();
+    const interval = setInterval(fetchDetail, 5000);
+    return () => clearInterval(interval);
   }, [attemptId, navigate]);
 
   const getRiskColor = (score) => score >= 60 ? 'var(--danger)' : score >= 30 ? 'var(--warning)' : 'var(--success)';

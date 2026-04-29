@@ -113,6 +113,7 @@ const submitExam = async (req, res) => {
     if (!attempt) return res.status(404).json({ message: 'Active attempt not found' });
 
     attempt.status = 'submitted';
+    attempt.end_time = new Date();
     // Dummy score generation for demo purposes, could be customized later
     attempt.score = Math.floor(Math.random() * (100 - 40 + 1)) + 40; 
     await attempt.save();
@@ -123,4 +124,89 @@ const submitExam = async (req, res) => {
   }
 };
 
-module.exports = { getDashboard, joinExam, getExam, createExam, submitExam };
+// @desc  List exams with admin stats
+// @route GET /api/exams/admin/list
+// @access Private (admin)
+const getAdminExamList = async (req, res) => {
+  try {
+    const exams = await Exam.find().sort({ start_time: -1 });
+    const examIds = exams.map((exam) => exam._id);
+    const attempts = await Attempt.find({ exam_id: { $in: examIds } }).select('exam_id status updatedAt');
+
+    const now = Date.now();
+    const liveWindowMs = 30000;
+    const statsByExamId = new Map();
+
+    attempts.forEach((attempt) => {
+      const key = attempt.exam_id.toString();
+      if (!statsByExamId.has(key)) {
+        statsByExamId.set(key, { answering: 0, offline: 0, answered: 0, total: 0 });
+      }
+
+      const stats = statsByExamId.get(key);
+      stats.total += 1;
+
+      if (attempt.status === 'submitted' || attempt.status === 'terminated') {
+        stats.answered += 1;
+      } else if (attempt.status === 'in_progress') {
+        const isLive = now - new Date(attempt.updatedAt).getTime() <= liveWindowMs;
+        if (isLive) stats.answering += 1;
+        else stats.offline += 1;
+      }
+    });
+
+    const response = exams.map((exam) => {
+      const stats = statsByExamId.get(exam._id.toString()) || { answering: 0, offline: 0, answered: 0, total: 0 };
+      return { ...exam.toObject(), stats };
+    });
+
+    res.json(response);
+  } catch (error) {
+    res.status(500).json({ message: error.message });
+  }
+};
+
+// @desc  Get categorized attempts for an exam
+// @route GET /api/exams/admin/:id/attempts
+// @access Private (admin)
+const getAdminExamAttempts = async (req, res) => {
+  try {
+    const exam = await Exam.findById(req.params.id);
+    if (!exam) return res.status(404).json({ message: 'Exam not found' });
+
+    const attempts = await Attempt.find({ exam_id: exam._id })
+      .populate('user_id', 'email')
+      .sort({ updatedAt: -1 });
+
+    const now = Date.now();
+    const liveWindowMs = 30000;
+    const grouped = { answering: [], offline: [], answered: [] };
+
+    attempts.forEach((attempt) => {
+      if (attempt.status === 'submitted' || attempt.status === 'terminated') {
+        grouped.answered.push(attempt);
+        return;
+      }
+
+      if (attempt.status === 'in_progress') {
+        const isLive = now - new Date(attempt.updatedAt).getTime() <= liveWindowMs;
+        if (isLive) grouped.answering.push(attempt);
+        else grouped.offline.push(attempt);
+      }
+    });
+
+    res.json({ exam, grouped });
+  } catch (error) {
+    res.status(500).json({ message: error.message });
+  }
+};
+
+module.exports = {
+  getDashboard,
+  joinExam,
+  getExam,
+  createExam,
+  submitExam,
+  getAdminExamList,
+  getAdminExamAttempts,
+};

@@ -25,6 +25,8 @@ export const examAPI = {
   getExam: (id) => API.get(`/exams/${id}`),
   createExam: (data) => API.post('/exams/create', data),
   submitExam: (id) => API.post(`/exams/${id}/submit`),
+  getAdminExamList: () => API.get('/exams/admin/list'),
+  getAdminExamAttempts: (id) => API.get(`/exams/admin/${id}/attempts`),
 };
 
 export const monitoringAPI = {
