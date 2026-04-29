@@ -43,6 +43,7 @@ A full-stack, AI-driven online exam proctoring platform that monitors students i
 - **Split-Screen Exam UI** — Google Form on the left, webcam + monitoring panel on the right
 - **Countdown Timer** — Auto-submits when time runs out
 - **Fullscreen Lock** — Browser enters fullscreen; exit attempts are logged
+- **Email Report** — Sends exam submission report to student email using MailerSend
 
 ### 🧑‍🏫 Admin Side
 - **Admin Dashboard** — Live grid of all active student sessions
@@ -147,6 +148,9 @@ Edit `.env` with your configuration:
 PORT=5000
 MONGO_URI=mongodb+srv://<user>:<pass>@cluster.mongodb.net/proctoring_db
 JWT_SECRET=your_secret_key_here
+MAILERSEND_API_KEY=your_mailersend_api_key
+MAILERSEND_FROM_EMAIL=verified-sender@yourdomain.com
+MAILERSEND_FROM_NAME=ProctorAI
 ```
 
 > **Note:** If no MongoDB is available, the backend automatically uses an in-memory MongoDB instance for local development.

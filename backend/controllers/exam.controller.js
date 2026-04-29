@@ -1,5 +1,6 @@
 const Exam = require('../models/Exam');
 const Attempt = require('../models/Attempt');
+const { sendExamReportEmail } = require('../utils/sendExamReportEmail');
 
 // @desc  Get student dashboard (upcoming + past exams)
 // @route GET /api/exams/dashboard
@@ -117,6 +118,22 @@ const submitExam = async (req, res) => {
     // Dummy score generation for demo purposes, could be customized later
     attempt.score = Math.floor(Math.random() * (100 - 40 + 1)) + 40; 
     await attempt.save();
+
+    const exam = await Exam.findById(attempt.exam_id).select('title code');
+    try {
+      await sendExamReportEmail({
+        toEmail: req.user.email,
+        examTitle: exam?.title,
+        examCode: exam?.code,
+        score: attempt.score,
+        riskScore: attempt.risk_score,
+        startedAt: attempt.start_time,
+        endedAt: attempt.end_time,
+      });
+    } catch (mailError) {
+      // Do not block successful submission if email delivery fails.
+      console.error('Failed to send exam report email:', mailError.message);
+    }
 
     res.json(attempt);
   } catch (error) {
