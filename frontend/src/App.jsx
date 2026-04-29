@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useEffect } from 'react';
 import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
 import Login from './pages/Login';
 import Register from './pages/Register';
@@ -21,6 +21,45 @@ const AdminRoute = ({ children }) => {
 };
 
 function App() {
+  useEffect(() => {
+    const stop = (e) => {
+      e.preventDefault();
+    };
+
+    const onKeyDown = (e) => {
+      const key = typeof e.key === 'string' ? e.key.toLowerCase() : '';
+      const mod = e.ctrlKey || e.metaKey;
+
+      if (mod && ['c', 'v', 'x', 'a', 's', 'p', 'u'].includes(key)) {
+        e.preventDefault();
+        return;
+      }
+      if (mod && e.shiftKey && ['i', 'j', 'c', 'k'].includes(key)) {
+        e.preventDefault();
+        return;
+      }
+      if (key === 'f12' || key === 'printscreen') {
+        e.preventDefault();
+      }
+    };
+
+    document.addEventListener('contextmenu', stop, true);
+    document.addEventListener('copy', stop, true);
+    document.addEventListener('cut', stop, true);
+    document.addEventListener('paste', stop, true);
+    document.addEventListener('dragstart', stop, true);
+    document.addEventListener('keydown', onKeyDown, true);
+
+    return () => {
+      document.removeEventListener('contextmenu', stop, true);
+      document.removeEventListener('copy', stop, true);
+      document.removeEventListener('cut', stop, true);
+      document.removeEventListener('paste', stop, true);
+      document.removeEventListener('dragstart', stop, true);
+      document.removeEventListener('keydown', onKeyDown, true);
+    };
+  }, []);
+
   return (
     <Router>
       <Routes>

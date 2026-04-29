@@ -1,274 +1,277 @@
-# 🎓 ProctorAI — AI-Powered Exam Proctoring System
+# ProctorAI
 
-A full-stack, AI-driven online exam proctoring platform that monitors students in real-time using face detection, audio analysis, and browser behavior tracking. Built for universities, colleges, and institutions conducting online assessments.
-
----
-
-## 📸 System Overview
-
-```
-┌──────────────────────────────────────────────────────────────────┐
-│                        STUDENT BROWSER                          │
-│  ┌─────────────────────┐  ┌──────────────────────────────────┐  │
-│  │   Google Form        │  │  📷 Webcam Feed                  │  │
-│  │   (Exam Questions)   │  │  🧠 MediaPipe Face Detection     │  │
-│  │                      │  │  🎤 Audio Monitoring              │  │
-│  │                      │  │  ⏱ Timer + Risk Score            │  │
-│  └─────────────────────┘  └──────────────────────────────────┘  │
-│            Tab Switch / Fullscreen / Browser Monitoring          │
-└──────────────────────┬───────────────────────────────────────────┘
-                       │  Events + Frames (1 FPS)
-                       ▼
-┌──────────────────────────────────────────────────────────────────┐
-│                     NODE.JS BACKEND (Express)                    │
-│  Auth (JWT) │ Exam CRUD │ Event Logging │ Risk Scoring │ Frames │
-└──────────────────────┬───────────────────────────────────────────┘
-                       │
-              ┌────────┴────────┐
-              ▼                 ▼
-┌──────────────────┐  ┌─────────────────────┐
-│   MongoDB        │  │  Python AI Service  │
-│   (Atlas/Local)  │  │  FastAPI + MediaPipe │
-└──────────────────┘  └─────────────────────┘
-```
+**ProctorAI** is a full-stack online exam proctoring platform for educational institutions. It combines browser-based monitoring (face detection, audio, tab and window behavior), optional server-side computer vision (MediaPipe + YOLO via FastAPI), and an admin console for live session oversight, risk scoring, and post-session review.
 
 ---
 
-## ✨ Features
+## Table of contents
 
-### 🧑‍🎓 Student Side
-- **Login / Register** — Email + password with JWT sessions
-- **Dashboard** — View upcoming, active, and completed exams with scores
-- **Join via Exam Code** — Enter a code like `EXAM-ABC123` to join a live exam
-- **Split-Screen Exam UI** — Google Form on the left, webcam + monitoring panel on the right
-- **Countdown Timer** — Auto-submits when time runs out
-- **Fullscreen Lock** — Browser enters fullscreen; exit attempts are logged
-- **Email Report** — Sends exam submission report to student email using MailerSend
-
-### 🧑‍🏫 Admin Side
-- **Admin Dashboard** — Live grid of all active student sessions
-- **Live Snapshots** — 1 FPS webcam thumbnails per student, refreshed every 5 seconds
-- **Risk Score Badges** — 🟢 Normal / 🟡 Suspicious / 🔴 Critical
-- **Create Exams** — Set title, Google Form URL, schedule, and duration
-- **Student Detail View** — Click any student to see full timeline, risk gauge, and last snapshot
-
-### 🤖 AI Monitoring (Real-Time)
-| Detection | Method | Event Type |
-|-----------|--------|------------|
-| No face in frame | MediaPipe (Browser) | `NO_FACE` |
-| Multiple faces | MediaPipe (Browser) | `MULTIPLE_FACES` |
-| Looking away | Bounding box analysis | `LOOKING_AWAY` |
-| Talking / voices | Web Audio API | `AUDIO_DETECTED` |
-| Phone detected | YOLOv8 object detection | `PHONE_DETECTED` |
-| Tab switch | Visibility API | `TAB_SWITCH` |
-| Window blur | Blur event | `BLURRED_WINDOW` |
-
-### 🧮 Risk Score Formula
-```
-risk = 30 × (multiple_faces)
-     + 20 × (no_face)
-     + 20 × (looking_away)
-     + 15 × (audio_detected)
-     + 35 × (phone_detected)
-     + 15 × (tab_switch)
-```
-Score accumulates in real-time, capped at 100.
+1. [Capabilities](#capabilities)
+2. [Architecture](#architecture)
+3. [Tech stack](#tech-stack)
+4. [Repository layout](#repository-layout)
+5. [Prerequisites](#prerequisites)
+6. [Installation and local run](#installation-and-local-run)
+7. [Configuration](#configuration)
+8. [API overview](#api-overview)
+9. [Proctoring model](#proctoring-model)
+10. [Testing](#testing)
+11. [Security and limitations](#security-and-limitations)
+12. [License and attribution](#license-and-attribution)
 
 ---
 
-## 📁 Project Structure
+## Capabilities
+
+**Students**
+
+- Email and password authentication with JWT.
+- Role-aware registration (student or admin).
+- Dashboard for upcoming, active, and completed exams.
+- Join exams with a short exam code.
+- Proctored exam experience: embedded assessment (Google Form URL), webcam preview, countdown timer, fullscreen enforcement with event logging, and continuous risk score updates.
+- Email summary after exam submission (MailerSend), when configured.
+
+**Administrators**
+
+- Create exams (title, form URL, schedule, duration).
+- Live monitoring of in-progress attempts with periodic snapshot refresh.
+- Per-student detail: risk gauge, latest frame, chronological event timeline.
+
+**Monitoring pipeline**
+
+- Client-side events (tab visibility, blur, mouse leaving window, selected keyboard shortcuts, audio level).
+- Optional **AI service**: frame analysis with MediaPipe face detection and Ultralytics YOLO for phone and generic object cues; results can auto-create persisted events and adjust risk.
+
+---
+
+## Architecture
 
 ```
-ProctorAI/
-├── backend/                          # Node.js + Express API
+┌─────────────────────────────────────────────────────────────┐
+│  React SPA (Vite) — student & admin UIs                     │
+│  MediaPipe (CDN) + Web Audio + browser event hooks          │
+└────────────────────────────┬────────────────────────────────┘
+                               │ HTTPS / JSON + JWT
+                               ▼
+┌─────────────────────────────────────────────────────────────┐
+│  Express API — auth, exams, attempts, events, frames        │
+└──────────────┬──────────────────────────────┬───────────────┘
+               │                              │
+               ▼                              ▼
+┌──────────────────────────┐   ┌─────────────────────────────┐
+│  MongoDB                 │   │  FastAPI AI (optional)      │
+│  Users, exams, attempts, │   │  /analyze-frame             │
+│  events                  │   │  MediaPipe + YOLO           │
+└──────────────────────────┘   └─────────────────────────────┘
+```
+
+The backend can run with MongoDB Atlas, a local MongoDB instance, or, for quick local demos, an **in-memory MongoDB** when `MONGO_URI` is unset or points to localhost (see `backend/server.js`).
+
+---
+
+## Tech stack
+
+| Area | Technologies |
+|------|----------------|
+| Frontend | React 19, React Router 7, Vite 8, Axios |
+| Backend | Node.js, Express 5, Mongoose, JWT, bcrypt |
+| Email | MailerSend (transactional) |
+| Database | MongoDB |
+| AI service | Python 3.9+, FastAPI, OpenCV, MediaPipe, Ultralytics YOLO |
+
+---
+
+## Repository layout
+
+```
+Group 3/
+├── backend/                 # REST API
 │   ├── controllers/
-│   │   ├── auth.controller.js        # Register & Login with JWT
-│   │   ├── exam.controller.js        # CRUD + Join exam logic
-│   │   └── monitoring.controller.js  # Events, frames, risk score, live feed
 │   ├── middleware/
-│   │   └── auth.middleware.js        # JWT verification + admin guard
 │   ├── models/
-│   │   ├── User.js                   # email, password_hash, role
-│   │   ├── Exam.js                   # code, form_url, schedule
-│   │   ├── Attempt.js                # session tracking + risk_score + last_frame
-│   │   └── Event.js                  # proctoring events with confidence
 │   ├── routes/
-│   │   ├── auth.routes.js
-│   │   ├── exam.routes.js
-│   │   └── monitoring.routes.js
-│   ├── server.js                     # Entry point
-│   ├── test.js                       # E2E API test script
-│   ├── .env.example
-│   └── package.json
-│
-├── frontend/                         # React + Vite
+│   ├── utils/
+│   ├── server.js
+│   ├── test.js
+│   └── .env.example
+├── frontend/                # Single-page application
 │   └── src/
-│       ├── pages/
-│       │   ├── Login.jsx             # Auth with role-based redirect
-│       │   ├── Register.jsx          # Student / Admin registration
-│       │   ├── Dashboard.jsx         # Student exam dashboard
-│       │   ├── ExamPage.jsx          # Split-screen proctored exam
-│       │   ├── AdminDashboard.jsx    # Live monitoring + exam creation
-│       │   └── AdminStudentDetail.jsx # Event timeline + risk gauge
-│       ├── services/
-│       │   └── api.js                # Axios client + JWT interceptor
-│       ├── App.jsx                   # Router + route guards
-│       └── index.css                 # Dark-mode design system
-│
-├── ai_service/                       # Python + FastAPI
-│   ├── main.py                       # MediaPipe face detection API
+├── ai_service/              # Optional FastAPI analyzer
+│   ├── main.py
 │   └── requirements.txt
-│
-├── Planned.md                        # Original system design document
-└── README.md                         # ← You are here
+├── reference/               # Legacy snippets (not wired to build)
+├── Planned.md
+└── README.md
 ```
 
 ---
 
-## 🚀 Getting Started
+## Prerequisites
 
-### Prerequisites
-- **Node.js** v18+
-- **Python** 3.9+
-- **MongoDB** (Atlas cloud or local instance)
+- **Node.js** 18 or newer  
+- **Python** 3.9 or newer (only if you run `ai_service`)  
+- **MongoDB** (recommended for production); optional for quick local API smoke tests  
 
-### 1. Clone the Repository
+---
+
+## Installation and local run
+
+### 1. Clone the repository
+
 ```bash
-git clone <repo-url>
+git clone <repository-url>
 cd "Group 3"
 ```
 
-### 2. Backend Setup
+### 2. Backend
+
 ```bash
 cd backend
 npm install
 cp .env.example .env
-```
-
-Edit `.env` with your configuration:
-```env
-PORT=5000
-MONGO_URI=mongodb+srv://<user>:<pass>@cluster.mongodb.net/proctoring_db
-JWT_SECRET=your_secret_key_here
-MAILERSEND_API_KEY=your_mailersend_api_key
-MAILERSEND_FROM_EMAIL=verified-sender@yourdomain.com
-MAILERSEND_FROM_NAME=ProctorAI
-```
-
-> **Note:** If no MongoDB is available, the backend automatically uses an in-memory MongoDB instance for local development.
-
-```bash
+# Edit .env — see Configuration
 npm run dev
-# Server starts on http://localhost:5000
 ```
 
-### 3. Frontend Setup
+Default API base URL: `http://localhost:5000`  
+Health check: `GET http://localhost:5000/health`
+
+### 3. Frontend
+
 ```bash
 cd frontend
 npm install
+cp .env.example .env
+# Set VITE_API_URL if the API is not on localhost:5000
 npm run dev
-# App starts on http://localhost:5173
 ```
 
-### 4. AI Service Setup (Optional)
+Default app URL: `http://localhost:5173`
+
+### 4. AI service (optional)
+
 ```bash
 cd ai_service
+python -m venv .venv
+source .venv/bin/activate   # Windows: .venv\Scripts\activate
 pip install -r requirements.txt
 python main.py
-# API starts on http://localhost:8000
 ```
 
-> The system works without the Python service — browser-side MediaPipe handles all real-time detection. The Python service provides an additional server-side analysis layer.
+Service URL: `http://localhost:8000`  
+Health check: `GET http://localhost:8000/health`
+
+Point the backend at this service with `AI_SERVICE_URL` (see below). On first run, YOLO may download model weights; ensure outbound network access or place weights according to Ultralytics documentation.
+
+### Production build (frontend)
+
+```bash
+cd frontend
+npm run build
+npm run preview   # optional local preview of dist/
+```
 
 ---
 
-## 🌐 API Reference
+## Configuration
+
+### Backend (`backend/.env`)
+
+| Variable | Required | Description |
+|----------|----------|-------------|
+| `PORT` | No | HTTP port (default `5000`) |
+| `MONGO_URI` | Recommended | MongoDB connection string |
+| `JWT_SECRET` | Yes | Secret for signing JWTs |
+| `AI_SERVICE_URL` | No | Base URL of FastAPI service (default `http://localhost:8000`) |
+| `MAILERSEND_API_KEY` | No | MailerSend API token |
+| `MAILERSEND_FROM_EMAIL` | No | Verified sender address in MailerSend |
+| `MAILERSEND_FROM_NAME` | No | Display name for outbound mail |
+
+If MailerSend variables are omitted, exam submission still succeeds; email is skipped.
+
+### Frontend (`frontend/.env`)
+
+| Variable | Description |
+|----------|-------------|
+| `VITE_API_URL` | API origin including port, e.g. `http://localhost:5000` (no trailing `/api`; the client appends `/api`) |
+
+---
+
+## API overview
+
+Base path: `/api`. Send `Authorization: Bearer <token>` for protected routes.
 
 ### Authentication
-| Method | Endpoint | Body | Description |
-|--------|----------|------|-------------|
-| `POST` | `/api/auth/register` | `{ email, password, role }` | Register user |
-| `POST` | `/api/auth/login` | `{ email, password }` | Login → JWT token |
+
+| Method | Path | Description |
+|--------|------|-------------|
+| `POST` | `/api/auth/register` | Body: `email`, `password`, `role` (`student` \| `admin`) |
+| `POST` | `/api/auth/login` | Body: `email`, `password` — returns JWT |
 
 ### Exams
-| Method | Endpoint | Auth | Description |
-|--------|----------|------|-------------|
-| `GET` | `/api/exams/dashboard` | Student | Get dashboard data |
-| `POST` | `/api/exams/join-exam` | Student | Join exam by code |
-| `POST` | `/api/exams/create` | Admin | Create new exam |
-| `GET` | `/api/exams/:id` | Auth | Get exam details |
+
+| Method | Path | Access | Description |
+|--------|------|--------|-------------|
+| `GET` | `/api/exams/dashboard` | Student | Upcoming, active, and completed attempts |
+| `POST` | `/api/exams/join-exam` | Student | Body: `code` — join by exam code |
+| `GET` | `/api/exams/:id` | Authenticated | Exam details and student attempt when applicable |
+| `POST` | `/api/exams/:id/submit` | Student | Submit in-progress attempt |
+| `POST` | `/api/exams/create` | Admin | Create exam |
+| `GET` | `/api/exams/admin/list` | Admin | Exams with aggregate attempt stats |
+| `GET` | `/api/exams/admin/:id/attempts` | Admin | Attempts grouped for monitoring UI |
 
 ### Monitoring
-| Method | Endpoint | Auth | Description |
-|--------|----------|------|-------------|
-| `POST` | `/api/monitoring/log-event` | Student | Log a proctoring event |
-| `POST` | `/api/monitoring/upload-frame` | Student | Upload webcam snapshot |
-| `GET` | `/api/monitoring/live` | Admin | Get all active sessions |
-| `GET` | `/api/monitoring/attempt/:id/events` | Admin | Get events for attempt |
-| `GET` | `/api/monitoring/attempt/:id/detail` | Admin | Full attempt + events |
+
+| Method | Path | Access | Description |
+|--------|------|--------|-------------|
+| `POST` | `/api/monitoring/log-event` | Student | Body: `attempt_id`, `event_type`, optional `confidence` |
+| `POST` | `/api/monitoring/upload-frame` | Student | Body: `attempt_id`, `frame` (base64 data URL) — stores snapshot, optional AI inference |
+| `GET` | `/api/monitoring/live` | Admin | Recently active in-progress attempts |
+| `GET` | `/api/monitoring/attempt/:attempt_id/events` | Admin | Events for one attempt |
+| `GET` | `/api/monitoring/attempt/:attempt_id/detail` | Admin | Attempt, user, exam, and full event list |
 
 ---
 
-## 🧪 Running Tests
+## Proctoring model
+
+**Event types** (persisted on `Event` documents) include, among others: `NO_FACE`, `MULTIPLE_FACES`, `LOOKING_AWAY`, `AUDIO_DETECTED`, `TAB_SWITCH`, `BLURRED_WINDOW`, `MOUSE_OFF_SCREEN`, `KEYBOARD_SHORTCUT`, `PHONE_DETECTED`, `OBJECT_DETECTED`.
+
+**Risk score** increases per event type according to server-side weights in `backend/controllers/monitoring.controller.js`, capped at **100**. Auto-generated events from the AI path are throttled (same type per attempt within a short window) to avoid spamming the database.
+
+**Email reports** after submit include exam metadata and attempt summary when MailerSend is configured.
+
+---
+
+## Testing
 
 ```bash
 cd backend
-
-# Syntax check (all files)
-node --check server.js && echo "✅ OK"
-
-# Full E2E API test
+node --check server.js
 node test.js
 ```
 
-Expected output:
-```
---- E2E API Test Suite ---
-1. Registering Admin...        ✅
-2. Creating Exam as Admin...   ✅ EXAM-XXXXXX
-3. Registering Student...      ✅
-4. Joining Exam as Student...  ✅
-5. Logging Event...            ✅ Risk Score: 20
-6. Admin Live Feed...          ✅
+`test.js` exercises registration, exam creation, join, event logging, and admin live feed against a running server.
 
-🎉 All backend tests passed!
+Frontend:
+
+```bash
+cd frontend
+npm run lint
+npm run build
 ```
 
 ---
 
-## ⚙️ Tech Stack
+## Security and limitations
 
-| Layer | Technology |
-|-------|-----------|
-| **Frontend** | React 19, Vite 8, React Router 7, Axios |
-| **Backend** | Node.js, Express, Mongoose, JWT, bcrypt |
-| **Database** | MongoDB (Atlas / Local / In-Memory) |
-| **AI (Browser)** | MediaPipe Face Detection, Web Audio API |
-| **AI (Server)** | Python, FastAPI, OpenCV, MediaPipe |
-| **Styling** | Vanilla CSS (dark-mode design system) |
+- **Browser-only controls** (for example, disabling context menu or blocking copy and paste in the SPA) reduce casual misuse; they do **not** stop determined users, other devices, virtual machines, or OS-level screen capture.
+- **Embedded third-party forms** (Google Forms in an iframe) run in another origin. Your application cannot fully instrument or harden that inner document; timer and UX mitigations apply only to your shell.
+- **JWT storage** in `localStorage` is common for demos; production deployments should evaluate HttpOnly cookies, HTTPS everywhere, CSP, rate limiting, and audit logging.
+- **PII and media**: webcam frames and events are sensitive; secure MongoDB, restrict admin access, and define retention policies appropriate to your jurisdiction (for example, GDPR or FERPA).
 
 ---
 
-## ⚠️ Known Limitations
+## License and attribution
 
-- **Google Forms iframe** — Cannot auto-submit or fully control the embedded form due to cross-origin restrictions. The custom timer blocks the view when time expires.
-- **Single device** — Cannot detect if a student opens a second device. This is a fundamental browser limitation.
-- **Fullscreen** — Browsers allow users to exit fullscreen; we re-request it and log the event, but cannot truly lock the screen.
-
----
-
-## 🔮 Future Enhancements
-
-- [ ] Custom question engine to replace Google Forms
-- [ ] Auto-grading system
-- [ ] Whisper-based server-side audio transcription
-- [ ] Video recording playback for post-exam review
-- [ ] WebSocket-based real-time Admin updates (instead of polling)
-- [ ] Multi-camera support
-- [ ] Export exam reports as PDF
-
----
-
-## 👥 Group 3
-
-Built as a college project demonstrating AI-powered exam proctoring capabilities.
+**Group 3** — academic project demonstrating AI-assisted online exam proctoring.
