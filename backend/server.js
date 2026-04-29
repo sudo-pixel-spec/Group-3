@@ -20,13 +20,16 @@ app.get('/health', (req, res) => {
   res.json({ status: 'ok', message: 'API is running' });
 });
 
-// Database connection
 const connectDB = async () => {
   try {
-    const conn = await mongoose.connect(process.env.MONGO_URI || 'mongodb://localhost:27017/proctoring_db', {
-      useNewUrlParser: true,
-      useUnifiedTopology: true,
-    });
+    let uri = process.env.MONGO_URI;
+    if (!uri || uri.includes('localhost') || uri.includes('127.0.0.1')) {
+      const { MongoMemoryServer } = require('mongodb-memory-server');
+      const mongod = await MongoMemoryServer.create();
+      uri = mongod.getUri();
+      console.log('Using MongoDB Memory Server for local testing.');
+    }
+    const conn = await mongoose.connect(uri);
     console.log(`MongoDB Connected: ${conn.connection.host}`);
     
     app.listen(PORT, () => {
