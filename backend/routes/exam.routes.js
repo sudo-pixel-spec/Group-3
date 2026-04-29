@@ -1,9 +1,11 @@
 const express = require('express');
 const router = express.Router();
+const { getDashboard, joinExam, getExam, createExam } = require('../controllers/exam.controller');
+const { protect, adminOnly } = require('../middleware/auth.middleware');
 
-// Placeholder for exam controllers
-router.get('/dashboard', (req, res) => res.send('Dashboard endpoint'));
-router.post('/join-exam', (req, res) => res.send('Join exam endpoint'));
-router.get('/:id', (req, res) => res.send('Get exam endpoint'));
+router.get('/dashboard', protect, getDashboard);
+router.post('/join-exam', protect, joinExam);
+router.post('/create', protect, adminOnly, createExam);
+router.get('/:id', protect, getExam);
 
 module.exports = router;

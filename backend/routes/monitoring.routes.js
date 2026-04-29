@@ -1,8 +1,10 @@
 const express = require('express');
 const router = express.Router();
+const { logEvent, getAttemptEvents, getLiveAttempts } = require('../controllers/monitoring.controller');
+const { protect, adminOnly } = require('../middleware/auth.middleware');
 
-// Placeholder for monitoring controllers
-router.post('/upload-frame', (req, res) => res.send('Upload frame endpoint'));
-router.post('/log-event', (req, res) => res.send('Log event endpoint'));
+router.post('/log-event', protect, logEvent);
+router.get('/live', protect, adminOnly, getLiveAttempts);
+router.get('/attempt/:attempt_id/events', protect, adminOnly, getAttemptEvents);
 
 module.exports = router;
