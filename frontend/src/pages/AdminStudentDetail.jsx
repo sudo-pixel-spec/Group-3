@@ -47,7 +47,10 @@ const AdminStudentDetail = () => {
     <>
       <nav className="navbar">
         <div className="navbar-brand">
-          <span onClick={() => navigate('/admin/dashboard')} style={{ cursor: 'pointer' }}>🎓 <span>Proctor</span>AI</span>
+          <span onClick={() => navigate('/admin/dashboard')} style={{ cursor: 'pointer', display: 'inline-flex', alignItems: 'center', gap: '0.5rem', color: 'var(--text-primary)' }}>
+            <img src="/vizi-logo-dark.svg" alt="Vizi Proctor Ai logo" style={{ width: '24px', height: '24px' }} />
+            Vizi Proctor Ai
+          </span>
           <span style={{ fontSize: '0.7rem', color: 'var(--accent)', marginLeft: '0.4rem', background: 'rgba(108,99,255,0.15)', padding: '0.2rem 0.5rem', borderRadius: '100px' }}>ADMIN</span>
         </div>
         <div className="navbar-actions">

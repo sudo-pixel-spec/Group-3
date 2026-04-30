@@ -22,13 +22,22 @@ const AdminRoute = ({ children }) => {
 
 function App() {
   useEffect(() => {
+    const isAdminRoute = () => window.location.pathname.startsWith('/admin');
+
     const stop = (e) => {
+      if (isAdminRoute() && ['contextmenu', 'copy', 'cut', 'paste'].includes(e.type)) {
+        return;
+      }
       e.preventDefault();
     };
 
     const onKeyDown = (e) => {
       const key = typeof e.key === 'string' ? e.key.toLowerCase() : '';
       const mod = e.ctrlKey || e.metaKey;
+
+      if (isAdminRoute() && mod && ['c', 'v', 'x'].includes(key)) {
+        return;
+      }
 
       if (mod && ['c', 'v', 'x', 'a', 's', 'p', 'u'].includes(key)) {
         e.preventDefault();

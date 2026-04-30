@@ -30,13 +30,9 @@ const Register = () => {
     <div className="page-center" style={{ background: 'radial-gradient(ellipse at 40% 60%, rgba(108,99,255,0.12) 0%, transparent 70%), var(--bg-base)' }}>
       <div className="card" style={{ width: '100%', maxWidth: '420px' }}>
         <div style={{ textAlign: 'center', marginBottom: '2rem' }}>
-          <div style={{
-            width: '56px', height: '56px', background: 'linear-gradient(135deg, var(--accent), #a78bfa)',
-            borderRadius: '16px', display: 'flex', alignItems: 'center', justifyContent: 'center',
-            fontSize: '1.6rem', margin: '0 auto 1rem'
-          }}>🎓</div>
+          <img src="/vizi-logo-dark.svg" alt="Vizi Proctor Ai logo" style={{ width: '56px', height: '56px', margin: '0 auto 1rem', display: 'block' }} />
           <h1 style={{ fontSize: '1.6rem', fontWeight: '700', marginBottom: '0.25rem' }}>Create Account</h1>
-          <p style={{ color: 'var(--text-secondary)', fontSize: '0.9rem' }}>Join ProctorAI today</p>
+          <p style={{ color: 'var(--text-secondary)', fontSize: '0.9rem' }}>Join Vizi Proctor Ai today</p>
         </div>
 
         {error && <div className="alert alert-error">{error}</div>}

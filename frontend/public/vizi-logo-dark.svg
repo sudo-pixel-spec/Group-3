@@ -1,0 +1,13 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 56 56" width="32" height="32">
+  <!-- Icon badge -->
+  <rect width="56" height="56" rx="12" fill="#1E3A8A"/>
+
+  <!-- Eye shape -->
+  <path d="M10 28 Q28 16 46 28 Q28 40 10 28Z" fill="#2563EB" opacity="0.7"/>
+
+  <!-- Iris -->
+  <circle cx="28" cy="28" r="7" fill="#60A5FA"/>
+
+  <!-- Pupil -->
+  <circle cx="28" cy="28" r="3.5" fill="#ffffff"/>
+</svg>

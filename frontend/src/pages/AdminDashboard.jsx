@@ -109,7 +109,11 @@ const AdminDashboard = () => {
   return (
     <>
       <nav className="navbar">
-        <div className="navbar-brand">🎓 <span>Proctor</span>AI <span style={{ fontSize: '0.7rem', color: 'var(--accent)', marginLeft: '0.4rem', background: 'rgba(108,99,255,0.15)', padding: '0.2rem 0.5rem', borderRadius: '100px' }}>ADMIN</span></div>
+        <div className="navbar-brand">
+          <img src="/vizi-logo-dark.svg" alt="Vizi Proctor Ai logo" style={{ width: '24px', height: '24px' }} />
+          <span style={{ color: 'var(--text-primary)' }}>Vizi Proctor Ai</span>
+          <span style={{ fontSize: '0.7rem', color: 'var(--accent)', marginLeft: '0.4rem', background: 'rgba(108,99,255,0.15)', padding: '0.2rem 0.5rem', borderRadius: '100px' }}>ADMIN</span>
+        </div>
         <div className="navbar-actions">
           <span style={{ color: 'var(--text-secondary)', fontSize: '0.875rem' }}>{user.email}</span>
           <button className="btn btn-ghost" style={{ padding: '0.45rem 1rem', fontSize: '0.85rem' }} onClick={handleLogout}>Logout</button>

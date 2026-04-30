@@ -404,7 +404,10 @@ const ExamPage = () => {
         borderBottom: '1px solid var(--border)', flexShrink: 0
       }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
-          <span style={{ fontWeight: '700', fontSize: '1rem' }}>🎓 ProctorAI</span>
+          <span style={{ display: 'inline-flex', alignItems: 'center', gap: '0.5rem', fontWeight: '700', fontSize: '1rem' }}>
+            <img src="/vizi-logo-dark.svg" alt="Vizi Proctor Ai logo" style={{ width: '22px', height: '22px' }} />
+            Vizi Proctor Ai
+          </span>
           <span style={{ color: 'var(--text-secondary)', fontSize: '0.85rem' }}>{exam?.title || 'Loading…'}</span>
         </div>
         <div style={{ display: 'flex', alignItems: 'center', gap: '1.25rem' }}>
