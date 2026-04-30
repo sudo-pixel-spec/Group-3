@@ -1,6 +1,6 @@
-# ProctorAI
+# Vizi Proctor Ai
 
-**ProctorAI** is a full-stack online exam proctoring platform for educational institutions. It combines browser-based monitoring (face detection, audio, tab and window behavior), optional server-side computer vision (MediaPipe + YOLO via FastAPI), and an admin console for live session oversight, risk scoring, and post-session review.
+**Vizi Proctor Ai** is a full-stack online exam proctoring platform for educational institutions. It combines browser-based monitoring (face detection, audio, tab and window behavior), optional server-side computer vision (MediaPipe + YOLO via FastAPI), and an admin console for live session oversight, risk scoring, and post-session review.
 
 ---
 
@@ -120,7 +120,7 @@ Group 3/
 ### 1. Clone the repository
 
 ```bash
-git clone <repository-url>
+git clone https://github.com/sudo-pixel-spec/Group-3
 cd "Group 3"
 ```
 
