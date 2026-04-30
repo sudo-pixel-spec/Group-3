@@ -141,33 +141,33 @@ const AdminDashboard = () => {
                 {createMsg}
               </div>
             )}
-            <form onSubmit={handleCreateExam} style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: '1rem' }}>
-              <div className="form-group" style={{ marginBottom: 0 }}>
+            <form onSubmit={handleCreateExam} className="create-exam-form">
+              <div className="form-group create-exam-field">
                 <label>Exam Title</label>
                 <input type="text" required placeholder="e.g. CS101 Final Exam"
                   value={examForm.title} onChange={e => setExamForm({ ...examForm, title: e.target.value })} />
               </div>
-              <div className="form-group" style={{ marginBottom: 0 }}>
+              <div className="form-group create-exam-field">
                 <label>Google Form URL</label>
                 <input type="url" required placeholder="https://forms.gle/..."
                   value={examForm.form_url} onChange={e => setExamForm({ ...examForm, form_url: e.target.value })} />
               </div>
-              <div className="form-group" style={{ marginBottom: 0 }}>
+              <div className="form-group create-exam-field">
                 <label>Start Time</label>
                 <input type="datetime-local" required value={examForm.start_time}
                   onChange={e => setExamForm({ ...examForm, start_time: e.target.value })} />
               </div>
-              <div className="form-group" style={{ marginBottom: 0 }}>
+              <div className="form-group create-exam-field">
                 <label>End Time</label>
                 <input type="datetime-local" required value={examForm.end_time}
                   onChange={e => setExamForm({ ...examForm, end_time: e.target.value })} />
               </div>
-              <div className="form-group" style={{ marginBottom: 0 }}>
+              <div className="form-group create-exam-field">
                 <label>Duration (minutes)</label>
                 <input type="number" required min="1" value={examForm.duration_minutes}
                   onChange={e => setExamForm({ ...examForm, duration_minutes: parseInt(e.target.value) })} />
               </div>
-              <div style={{ display: 'flex', alignItems: 'flex-end' }}>
+              <div className="create-exam-submit">
                 <button type="submit" className="btn btn-primary btn-full">Create Exam</button>
               </div>
             </form>

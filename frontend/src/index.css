@@ -125,7 +125,12 @@ label {
 
 input[type="text"],
 input[type="email"],
-input[type="password"] {
+input[type="password"],
+input[type="url"],
+input[type="number"],
+input[type="date"],
+input[type="time"],
+input[type="datetime-local"] {
   background: rgba(255,255,255,0.04);
   border: 1px solid var(--border);
   border-radius: var(--radius-sm);
@@ -142,6 +147,44 @@ input:focus {
   border-color: var(--accent);
   background: rgba(108,99,255,0.06);
   box-shadow: 0 0 0 3px var(--accent-glow);
+}
+
+input::placeholder {
+  color: var(--text-secondary);
+}
+
+input[type="datetime-local"]::-webkit-calendar-picker-indicator,
+input[type="date"]::-webkit-calendar-picker-indicator,
+input[type="time"]::-webkit-calendar-picker-indicator {
+  cursor: pointer;
+  opacity: 0.9;
+  filter: invert(82%) sepia(7%) saturate(292%) hue-rotate(191deg) brightness(101%) contrast(91%);
+}
+
+input[type="datetime-local"]::-webkit-datetime-edit,
+input[type="date"]::-webkit-datetime-edit,
+input[type="time"]::-webkit-datetime-edit {
+  color: var(--text-primary);
+}
+
+input[type="number"]::-webkit-outer-spin-button,
+input[type="number"]::-webkit-inner-spin-button {
+  opacity: 1;
+}
+
+.create-exam-form {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+  gap: 1rem;
+}
+
+.create-exam-field {
+  margin-bottom: 0;
+}
+
+.create-exam-submit {
+  display: flex;
+  align-items: flex-end;
 }
 
 /* ── Status Badges ──────────────────────────────────────── */
