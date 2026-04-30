@@ -1,6 +1,6 @@
-# ViZi Proctor Ai
+# Vizi Proctor Ai
 
-**ViZi Proctor Ai** is a full-stack online exam proctoring platform for educational institutions. It combines browser-based monitoring (face detection, audio, tab and window behavior), optional server-side computer vision (MediaPipe + YOLO via FastAPI), and an admin console for live session oversight, risk scoring, and post-session review.
+**Vizi Proctor Ai** is a full-stack online exam proctoring platform for educational institutions. It combines browser-based monitoring (face detection, audio, tab and window behavior), optional server-side computer vision (MediaPipe + YOLO via FastAPI), and an admin console for live session oversight, risk scoring, and post-session review.
 
 ---
 
